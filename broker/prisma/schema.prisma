@@ -364,6 +364,7 @@ model TopologyRevision {
 
 model User {
   id           String    @id @default(uuid())
+  username     String    @unique
   email        String    @unique
   passwordHash String    @db.Text
   role         String    @default("VIEWER") // ADMIN | GRID_OPERATOR | DER_OWNER | AUDITOR | VIEWER
@@ -373,6 +374,7 @@ model User {
   updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
 
   @@index([email])
+  @@index([username])
   @@map("users")
 }
 

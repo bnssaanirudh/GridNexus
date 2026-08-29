@@ -74,6 +74,7 @@ def verify_stability(
     value_model: CoalitionValueModel | None = None,
     max_iter: int = MAX_ITER_DEFAULT,
     max_deviation_size: int | None = None,
+    surplus_map: dict[Any, float] | None = None,
 ) -> StabilityResult:
     """Check core stability of a coalition using Least-Core LP."""
     t_start = time.perf_counter()
@@ -82,7 +83,12 @@ def verify_stability(
         raise ValueError("Coalition must be non-empty")
         
     profiles = profiles or {}
-    value_model = value_model or VPPValueModel()
+    
+    if surplus_map is not None:
+        from app.stability.value_model import AdditiveValueModel
+        value_model = AdditiveValueModel(surplus_map=surplus_map)
+    else:
+        value_model = value_model or VPPValueModel()
     
     # 1 member -> trivially stable
     if len(coalition) == 1:

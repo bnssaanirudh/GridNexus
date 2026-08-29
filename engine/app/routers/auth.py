@@ -76,7 +76,7 @@ async def get_current_user(
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
+    if user is None or not user.active:
         raise credentials_exception
     return user
 
@@ -108,10 +108,10 @@ async def register(
         id=str(uuid.uuid4()),
         username=body.username,
         email=body.email,
-        hashed_password=hash_password(body.password),
-        role="researcher",
-        is_active=True,
-        created_at=datetime.now(tz=timezone.utc),
+        passwordHash=hash_password(body.password),
+        role="VIEWER",
+        active=True,
+        createdAt=datetime.now(tz=timezone.utc),
     )
     db.add(new_user)
     await db.commit()
@@ -133,13 +133,13 @@ async def login(
     result = await db.execute(select(User).where(User.username == form_data.username))
     user = result.scalar_one_or_none()
 
-    if user is None or not verify_password(form_data.password, user.hashed_password):
+    if user is None or not verify_password(form_data.password, user.passwordHash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if not user.is_active:
+    if not user.active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated.",

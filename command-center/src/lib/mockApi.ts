@@ -13,10 +13,11 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
   const url = typeof input === "string" ? input : (input as Request).url;
   
   // Only mock if we are using the demo mock token or if it's hitting our local backend ports
-  const isDemo = getToken() === "mock.jwt.token";
+  const isDemoEnv = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+  const hasMockToken = getToken() === "mock.jwt.token";
   const isBackendCall = url.includes(":3000") || url.includes(":8000");
 
-  if (isDemo && isBackendCall) {
+  if (isDemoEnv && hasMockToken && isBackendCall) {
     console.log(`[Demo Mode] Intercepted fetch to ${url}`);
     
     let mockData: any = {};

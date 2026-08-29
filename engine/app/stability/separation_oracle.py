@@ -1,10 +1,10 @@
 """
 engine/app/stability/separation_oracle.py
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Separation oracle for the farsighted-stability constraint-generation loop.
+Separation oracle for the Graph-Constrained Least-Core stability constraint-generation loop.
 
 The oracle takes the current LP solution x* and a set of permissible
-coalitions (from 's planar-graph enumeration) and returns the
+coalitions (from the planar-graph enumeration) and returns the
 most-violated stability constraint, i.e. the deviating coalition T that
 achieves the minimum slack:
 
@@ -48,7 +48,7 @@ def separation_oracle(
     char_fn: dict[frozenset[Any], float],
     epsilon: float = 1e-6,
 ) -> OracleResult:
-    """Find the most-violated farsighted-stability constraint.
+    """Find the most-violated Graph-Constrained Least-Core stability constraint.
 
     For every permissible coalition T in ``permissible``, computes:
 
@@ -108,11 +108,11 @@ def separation_oracle(
 
 
 from app.schemas.stability import AgentProfile
-from app.stability.value_model import CoalitionValueModel, VPPValueModel
+from app.stability.value_model import CoalitionValueModel, VPPValueModel, AdditiveValueModel
 
 def build_characteristic_function(
     agents: list[Any],
-    profiles: dict[Any, AgentProfile],
+    profiles: dict[Any, Any],
     permissible: list[frozenset[Any]],
     value_model: CoalitionValueModel | None = None,
 ) -> dict[frozenset[Any], float]:
@@ -120,13 +120,14 @@ def build_characteristic_function(
 
     Uses a non-additive CoalitionValueModel (e.g. VPPValueModel) to calculate
     surplus taking into account congestion, losses, and matching.
+    Supports legacy dict[str, float] surplus_map passed as `profiles` for tests.
 
     Parameters
     ----------
     agents:
         List of agent IDs in the proposed coalition S.
     profiles:
-        Maps agent id → AgentProfile (Seller/Buyer economics).
+        Maps agent id → AgentProfile (Seller/Buyer economics) or float (for legacy tests).
     permissible:
         List of permissible deviating coalitions to compute v for.
     value_model:
@@ -138,7 +139,12 @@ def build_characteristic_function(
         Maps frozenset(T) → v(T) for all T in permissible.
     """
     if value_model is None:
-        value_model = VPPValueModel()
+        # Check if profiles is actually a surplus_map (dict of floats) for backward compatibility
+        is_legacy_surplus = any(isinstance(v, (int, float)) for v in profiles.values())
+        if is_legacy_surplus or not profiles:
+            value_model = AdditiveValueModel(surplus_map=profiles)
+        else:
+            value_model = VPPValueModel()
         
     result: dict[frozenset[Any], float] = {}
     for T in permissible:

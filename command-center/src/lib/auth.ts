@@ -87,13 +87,16 @@ export async function apiLogin(username: string, password: string): Promise<Logi
     setStoredUser(data.user);
     return data;
   } catch (error) {
-    // Mock login if backend is unreachable
-    console.warn("Backend unreachable, falling back to mock login.");
-    const mockUser: AuthUser = { id: "mock-1", username: username || "Guest", email: "guest@example.com", role: "demo" };
-    const mockToken = "mock.jwt.token";
-    setToken(mockToken);
-    setStoredUser(mockUser);
-    return { access_token: mockToken, token_type: "bearer", user: mockUser };
+    const isDemoMode = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+    if (isDemoMode) {
+      console.warn("Backend unreachable, falling back to mock login.");
+      const mockUser: AuthUser = { id: "mock-1", username: username || "Guest", email: "guest@example.com", role: "demo" };
+      const mockToken = "mock.jwt.token";
+      setToken(mockToken);
+      setStoredUser(mockUser);
+      return { access_token: mockToken, token_type: "bearer", user: mockUser };
+    }
+    throw error;
   }
 }
 
@@ -119,13 +122,16 @@ export async function apiRegister(
     setStoredUser(data.user);
     return data;
   } catch (error) {
-    // Mock register if backend is unreachable
-    console.warn("Backend unreachable, falling back to mock registration.");
-    const mockUser: AuthUser = { id: "mock-2", username: username || "New User", email, role: "demo" };
-    const mockToken = "mock.jwt.token";
-    setToken(mockToken);
-    setStoredUser(mockUser);
-    return { access_token: mockToken, token_type: "bearer", user: mockUser };
+    const isDemoMode = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+    if (isDemoMode) {
+      console.warn("Backend unreachable, falling back to mock registration.");
+      const mockUser: AuthUser = { id: "mock-2", username: username || "New User", email, role: "demo" };
+      const mockToken = "mock.jwt.token";
+      setToken(mockToken);
+      setStoredUser(mockUser);
+      return { access_token: mockToken, token_type: "bearer", user: mockUser };
+    }
+    throw error;
   }
 }
 

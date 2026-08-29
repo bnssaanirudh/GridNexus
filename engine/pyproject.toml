@@ -3,6 +3,7 @@ name = "gridnexus-engine"
 version = "0.1.0"
 description = "GridNexus Layer 1 – Mathematical & AI core (FastAPI, LangChain, DQN, MAPPO)"
 authors = ["GridNexus Team"]
+package-mode = false
 
 
 [tool.poetry.dependencies]

@@ -106,10 +106,11 @@ class User(Base):
     """Platform user for JWT authentication and RBAC."""
     __tablename__ = "users"
 
-    id              = Column(String, primary_key=True)
-    username        = Column(String(50),  unique=True, nullable=False, index=True)
-    email           = Column(String(200), unique=True, nullable=False, index=True)
-    hashed_password = Column(String,      nullable=False)
-    role            = Column(String(30),  nullable=False, default="researcher")
-    is_active       = Column(Boolean,     nullable=False, default=True)
-    created_at      = Column(DateTime(timezone=True), server_default=func.now())
+    id           = Column(String, primary_key=True)
+    username     = Column(String(50),  unique=True, nullable=False, index=True)
+    email        = Column(String(200), unique=True, nullable=False, index=True)
+    passwordHash = Column(String,      nullable=False)
+    role         = Column(String(30),  nullable=False, default="VIEWER")
+    active       = Column(Boolean,     nullable=False, default=True)
+    createdAt    = Column(DateTime(timezone=True), server_default=func.now())
+    updatedAt    = Column(DateTime(timezone=True), onupdate=func.now())
