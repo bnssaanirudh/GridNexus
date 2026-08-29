@@ -2,35 +2,37 @@
  * command-center/src/components/DashboardShell.tsx
  * ──────────────────────────────────────────────────
  * Top bar + collapsible sidebar + page content layout for the dashboard.
+ * Updated with user profile, logout, and Kononenko light theme.
  */
 
 import { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../lib/auth";
 
 const NAV_SECTIONS = [
   {
     label: "Monitoring",
     items: [
-      { path: "/dashboard", icon: "◈", label: "Overview", end: true },
+      { path: "/dashboard",              icon: "◈", label: "Overview",       end: true },
       { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
-      { path: "/dashboard/coalitions", icon: "◎", label: "Coalitions" },
-      { path: "/dashboard/grid", icon: "⟁", label: "Grid Topology" },
-      { path: "/dashboard/oracle", icon: "◉", label: "Oracle" },
+      { path: "/dashboard/coalitions",   icon: "◎", label: "Coalitions" },
+      { path: "/dashboard/grid",         icon: "⟁", label: "Grid Topology" },
+      { path: "/dashboard/oracle",       icon: "◉", label: "Oracle" },
     ],
   },
   {
     label: "Assets & Settlement",
     items: [
-      { path: "/dashboard/ders", icon: "⬡", label: "DER Assets" },
-      { path: "/dashboard/settlements", icon: "▣", label: "Settlements" },
+      { path: "/dashboard/ders",         icon: "⬡", label: "DER Assets" },
+      { path: "/dashboard/settlements",  icon: "▣", label: "Settlements" },
     ],
   },
   {
     label: "Governance",
     items: [
-      { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
-      { path: "/dashboard/experiments", icon: "⊗", label: "Experiments" },
-      { path: "/dashboard/health", icon: "◌", label: "System Health" },
+      { path: "/dashboard/audit",        icon: "⌁", label: "Audit Chain" },
+      { path: "/dashboard/experiments",  icon: "⊗", label: "Experiments" },
+      { path: "/dashboard/health",       icon: "◌", label: "System Health" },
     ],
   },
 ];
@@ -51,6 +53,17 @@ export default function DashboardShell() {
   const [collapsed, setCollapsed] = useState(false);
   const clock = useClock();
   const isSimulation = MODE === "simulation";
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  // User initials for avatar
+  const initials = user?.username
+    ? user.username.slice(0, 2).toUpperCase()
+    : "G";
 
   return (
     <div className="app-shell">
@@ -94,14 +107,40 @@ export default function DashboardShell() {
 
         <div className="topbar-divider" />
 
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate("/")}>
-          ← Landing
-        </button>
+        {/* User profile */}
+        {user ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+            <div className="topbar-user" title={user.username}>
+              <div className="topbar-avatar" aria-hidden="true">{initials}</div>
+              <span className="topbar-username">{user.username}</span>
+            </div>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={handleLogout}
+              title="Sign out"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate("/")}>
+              ← Home
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate("/login")}>
+              Sign In
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="main-body">
         {/* Sidebar */}
-        <nav className={`sidebar${collapsed ? " collapsed" : ""}`} role="navigation" aria-label="Dashboard navigation">
+        <nav
+          className={`sidebar${collapsed ? " collapsed" : ""}`}
+          role="navigation"
+          aria-label="Dashboard navigation"
+        >
           {NAV_SECTIONS.map(section => (
             <div key={section.label}>
               <div className="sidebar-section-label">{section.label}</div>
@@ -119,6 +158,30 @@ export default function DashboardShell() {
               ))}
             </div>
           ))}
+
+          {/* Sidebar footer */}
+          {!collapsed && (
+            <div style={{
+              marginTop: "auto",
+              padding: "var(--space-4) var(--space-5)",
+              borderTop: "1px solid var(--border-light)",
+            }}>
+              {user ? (
+                <div style={{ fontSize: "12px", color: "var(--fg-muted)" }}>
+                  <div style={{ fontWeight: 500, color: "var(--fg-secondary)", marginBottom: "2px" }}>
+                    {user.username}
+                  </div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.04em" }}>
+                    {user.role ?? "researcher"}
+                  </div>
+                </div>
+              ) : (
+                <a href="/" style={{ fontSize: "11px", color: "var(--fg-muted)", fontFamily: "var(--font-mono)" }}>
+                  ← Back to landing
+                </a>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* Page content */}

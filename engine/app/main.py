@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from app.deps import check_db_health, check_redis_health
 from app.logging_middleware import RequestIdMiddleware, logger
-from app.routers import agents, metrics, negotiate, oracle, qre, stability, grid
+from app.routers import agents, metrics, negotiate, oracle, qre, stability, grid, auth
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -32,6 +32,7 @@ app.include_router(oracle.router)
 app.include_router(qre.router)
 app.include_router(metrics.router)
 app.include_router(grid.router)
+app.include_router(auth.router)
 
 class HealthResponse(BaseModel):
     status: str

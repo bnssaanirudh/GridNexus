@@ -1,20 +1,30 @@
 /**
  * command-center/src/App.tsx
  * ───────────────────────────
- * Root application with React Router v6 routing.
+ * Root application with React Router v6 routing + Auth context.
  * Routes:
- *   /              → Landing page
- *   /dashboard     → Dashboard shell
- *   /dashboard/*   → Nested pages
+ *   /         → Landing page
+ *   /login    → Auth page
+ *   /dashboard/* → Protected dashboard
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 
-// Immediately loaded
-import LandingPage from "./pages/LandingPage";
+import LandingPage    from "./pages/LandingPage";
+import LoginPage      from "./pages/LoginPage";
 import DashboardShell from "./components/DashboardShell";
-import OverviewPage from "./pages/OverviewPage";
+import OverviewPage   from "./pages/OverviewPage";
+import AuthGuard      from "./components/AuthGuard";
+import {
+  AuthContext,
+  type AuthUser,
+  getStoredUser,
+  isAuthenticated,
+  apiLogin,
+  apiRegister,
+  logout as doLogout,
+} from "./lib/auth";
 
 // Lazy-loaded dashboard pages
 const NegotiationFeedPage = lazy(() => import("./pages/NegotiationFeedPage"));
@@ -34,7 +44,7 @@ function PageLoader() {
       <div className="skeleton" style={{ height: "14px", width: "300px", borderRadius: "var(--radius-sm)" }} />
       <div className="kpi-grid" style={{ marginTop: "var(--space-4)" }}>
         {[...Array(8)].map((_, i) => (
-          <div key={i} style={{ padding: "var(--space-5)", background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+          <div key={i} style={{ padding: "var(--space-5)", background: "var(--bg-white)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
             <div className="skeleton" style={{ height: "11px", width: "80%" }} />
             <div className="skeleton" style={{ height: "32px", width: "60%" }} />
           </div>
@@ -45,47 +55,90 @@ function PageLoader() {
 }
 
 export default function App() {
+  const [user, setUser] = useState<AuthUser | null>(getStoredUser);
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      const stored = getStoredUser();
+      if (stored) setUser(stored);
+    }
+  }, []);
+
+  const login = async (username: string, password: string) => {
+    const result = await apiLogin(username, password);
+    setUser(result.user);
+  };
+
+  const register = async (username: string, email: string, password: string) => {
+    const result = await apiRegister(username, email, password);
+    setUser(result.user);
+  };
+
+  const logout = () => {
+    doLogout();
+    setUser(null);
+  };
+
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Landing page */}
-        <Route path="/" element={<LandingPage />} />
+    <AuthContext.Provider
+      value={{
+        user,
+        authenticated: isAuthenticated(),
+        login,
+        register,
+        logout,
+        setUser,
+      }}
+    >
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/"      element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
 
-        {/* Dashboard shell with nested pages */}
-        <Route path="/dashboard" element={<DashboardShell />}>
-          <Route index element={<OverviewPage />} />
-          <Route path="negotiations" element={
-            <Suspense fallback={<PageLoader />}><NegotiationFeedPage /></Suspense>
-          } />
-          <Route path="coalitions" element={
-            <Suspense fallback={<PageLoader />}><CoalitionsPage /></Suspense>
-          } />
-          <Route path="grid" element={
-            <Suspense fallback={<PageLoader />}><GridPage /></Suspense>
-          } />
-          <Route path="oracle" element={
-            <Suspense fallback={<PageLoader />}><OraclePage /></Suspense>
-          } />
-          <Route path="ders" element={
-            <Suspense fallback={<PageLoader />}><DERAssetsPage /></Suspense>
-          } />
-          <Route path="settlements" element={
-            <Suspense fallback={<PageLoader />}><SettlementsPage /></Suspense>
-          } />
-          <Route path="audit" element={
-            <Suspense fallback={<PageLoader />}><AuditPage /></Suspense>
-          } />
-          <Route path="experiments" element={
-            <Suspense fallback={<PageLoader />}><ExperimentsPage /></Suspense>
-          } />
-          <Route path="health" element={
-            <Suspense fallback={<PageLoader />}><SystemHealthPage /></Suspense>
-          } />
-        </Route>
+          {/* Protected dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              <AuthGuard>
+                <DashboardShell />
+              </AuthGuard>
+            }
+          >
+            <Route index element={<OverviewPage />} />
+            <Route path="negotiations" element={
+              <Suspense fallback={<PageLoader />}><NegotiationFeedPage /></Suspense>
+            } />
+            <Route path="coalitions" element={
+              <Suspense fallback={<PageLoader />}><CoalitionsPage /></Suspense>
+            } />
+            <Route path="grid" element={
+              <Suspense fallback={<PageLoader />}><GridPage /></Suspense>
+            } />
+            <Route path="oracle" element={
+              <Suspense fallback={<PageLoader />}><OraclePage /></Suspense>
+            } />
+            <Route path="ders" element={
+              <Suspense fallback={<PageLoader />}><DERAssetsPage /></Suspense>
+            } />
+            <Route path="settlements" element={
+              <Suspense fallback={<PageLoader />}><SettlementsPage /></Suspense>
+            } />
+            <Route path="audit" element={
+              <Suspense fallback={<PageLoader />}><AuditPage /></Suspense>
+            } />
+            <Route path="experiments" element={
+              <Suspense fallback={<PageLoader />}><ExperimentsPage /></Suspense>
+            } />
+            <Route path="health" element={
+              <Suspense fallback={<PageLoader />}><SystemHealthPage /></Suspense>
+            } />
+          </Route>
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Catch-all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthContext.Provider>
   );
 }
