@@ -1,0 +1,17 @@
+# engine/.dockerignore
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+.coverage
+coverage.xml
+.ruff_cache/
+.mypy_cache/
+artifacts/
+tests/

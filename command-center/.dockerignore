@@ -1,0 +1,12 @@
+# command-center/.dockerignore
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+*.tsbuildinfo
+test-results/
+playwright-report/
+e2e/
+coverage/
+npm-debug.log*

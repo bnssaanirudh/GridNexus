@@ -1,0 +1,76 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#e0e0e0', 'primaryBorderColor': '#4a90d9', 'lineColor': '#4a90d9', 'secondaryColor': '#16213e', 'tertiaryColor': '#0f3460'}}}%%
+sequenceDiagram
+    autonumber
+    participant Scheduler as BullMQ Scheduler<br/>(oracle-broadcast-jobs)
+    participant Worker as OracleBroadcastWorker
+    participant Engine as Engine FastAPI<br/>(/oracle/signal)
+    participant DB as PostgreSQL<br/>(Prisma)
+    participant BeliefSvc as BeliefUpdateService
+    participant Gate as NegotiationGate<br/>(negotiate.ts)
+    participant Stability as StabilityGate<br/>(BullMQ + Worker)
+    participant Ledger as CommitTrade<br/>(audit ledger)
+
+    rect rgb(20, 40, 80)
+        Note over Scheduler,DB: Stage 1 – Oracle Broadcast (every ORACLE_BROADCAST_INTERVAL_MS)
+        Scheduler->>Worker: oracle-broadcast-jobs (scheduledAt)
+        Worker->>Engine: POST /oracle/signal {AnonymizedGridState}
+        Engine-->>Worker: {signal, confidence, broadcast_text}
+        Worker->>DB: INSERT oraclesignals (signalData)
+        DB-->>Worker: signalId
+    end
+
+    rect rgb(20, 60, 60)
+        Note over Worker,BeliefSvc: Stage 2 – Belief Updates (per subscribed agent)
+        loop For each Agent
+            Worker->>BeliefSvc: runBeliefUpdateCycle(signalId, signalData)
+            BeliefSvc->>DB: SELECT last BeliefUpdate WHERE agentId AND status=COMPLETE
+            DB-->>BeliefSvc: prior belief (or 0.5 if none)
+            BeliefSvc->>DB: INSERT beliefupdates (status=PENDING, beforeBelief=prior)
+            BeliefSvc->>BeliefSvc: computeBayesianPosterior(prior, confidence)
+            BeliefSvc->>DB: UPDATE beliefupdates SET afterBelief=posterior, status=COMPLETE
+        end
+        Worker-->>Scheduler: {signalId, agentsUpdated, durationMs}
+    end
+
+    rect rgb(60, 30, 30)
+        Note over Gate,DB: Stage 3 – Negotiation Gate (WebSocket start_negotiation)
+        Gate->>DB: SELECT beliefupdates WHERE agentId IN (agent1, agent2) AND status=PENDING
+        alt Pending belief update exists
+            DB-->>Gate: row found
+            Gate-->>Gate: emit belief_update_pending → client
+            Note right of Gate: Session deferred
+        else No pending updates
+            DB-->>Gate: null
+            Gate->>DB: INSERT negotiations (status=PENDING)
+            DB-->>Gate: negId
+            Note right of Gate: Rubinstein loop begins
+        end
+    end
+
+    rect rgb(40, 20, 60)
+        Note over Gate,Stability: Stage 4 – Negotiation → Stability Check (on ACCEPT)
+        Gate->>Stability: StabilityGate.check(negotiationId, agents, surplus)
+        Stability->>Engine: POST /stability/verify {coalition, surplusMap}
+        Engine-->>Stability: {isStable, margin, violatingDeviation?}
+        Stability->>DB: INSERT stabilitychecks (isStable, margin)
+        alt isStable = false
+            Stability-->>Gate: {passed: false}
+            Gate->>DB: UPDATE negotiations SET status=REJECTED
+            Gate-->>Gate: emit stability_rejected → agents
+        else isStable = true
+            Stability-->>Gate: {passed: true, checkId}
+        end
+    end
+
+    rect rgb(20, 60, 30)
+        Note over Gate,Ledger: Stage 5 – Trade Commit (ACID ledger write)
+        Gate->>Ledger: commitTrade({energyTransfer, beliefUpdate, rlReward})
+        Ledger->>DB: BEGIN TRANSACTION
+        Ledger->>DB: INSERT energytransfers (FK → stabilitycheckid, negotiationId)
+        Ledger->>DB: INSERT beliefupdates (decisionSource=DQN_GATE)
+        Ledger->>DB: INSERT rlrewards (agentId, rewardValue)
+        Ledger->>DB: UPDATE negotiations SET status=ACCEPTED
+        DB-->>Ledger: COMMIT
+        Ledger-->>Gate: success
+        Gate-->>Gate: emit negotiation_complete → agents
+    end

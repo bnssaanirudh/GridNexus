@@ -1,0 +1,1014 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GridNexus Layer 1 - Engine",
+    "description": "Mathematical & AI core for Virtual Power Plants",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/agents": {
+      "post": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Create Agent",
+        "operationId": "create_agent_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/{agent_id}": {
+      "get": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Get Agent",
+        "operationId": "get_agent_agents__agent_id__get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Update Agent",
+        "operationId": "update_agent_agents__agent_id__put",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Delete Agent",
+        "operationId": "delete_agent_agents__agent_id__delete",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/negotiate": {
+      "post": {
+        "tags": [
+          "Negotiate"
+        ],
+        "summary": "Negotiate",
+        "description": "Evaluate a negotiation round for an agent using the DQN safeguard.",
+        "operationId": "negotiate_negotiate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NegotiationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NegotiationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stability/verify": {
+      "post": {
+        "tags": [
+          "Stability"
+        ],
+        "summary": "Stability Verify",
+        "description": "Check farsighted stability of a proposed microgrid coalition.\n\nArgs:\n    request: ``coalition`` (required) + optional ``surplus_map``.\n\nReturns:\n    Full StabilityVerifyResponse including is_stable, margin, deviating\n    coalition, binding constraints, and solver telemetry.\n\nRaises:\n    HTTP 400 if the coalition is empty.\n    HTTP 422 if any microgrid ID is unknown or the coalition is not\n    connected in the physical graph.",
+        "operationId": "stability_verify_stability_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StabilityVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StabilityVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oracle/signal": {
+      "post": {
+        "tags": [
+          "Oracle"
+        ],
+        "summary": "Compute Signal",
+        "description": "Select and broadcast a Bayesian persuasion signal.\n\nThe Oracle policy observes only the AnonymizedGridState from the request\nbody.  It selects a signal action, persists it to the oracle_signals table,\nand returns the framed broadcast to the caller.\n\nRaises\n------\nHTTPException 422\n    If the request body fails Pydantic validation (handled automatically).\nHTTPException 500\n    If inference or database persistence fails.",
+        "operationId": "compute_signal_oracle_signal_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OracleSignalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OracleSignalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qre/calibrate": {
+      "post": {
+        "tags": [
+          "QRE"
+        ],
+        "summary": "Calibrate Qre",
+        "operationId": "calibrate_qre_qre_calibrate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QRECalibrateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QRECalibrateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "Metrics"
+        ],
+        "summary": "Get Metrics",
+        "description": "Return reasoning-deficit metrics.\n\nQuery Parameters\n----------------\nformat : str, optional\n    Pass ``?format=prometheus`` for Prometheus text format.\n    Defaults to JSON.",
+        "operationId": "get_metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Ready Check",
+        "operationId": "ready_check_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Name of the agent"
+          },
+          "policy_metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Policy Metadata",
+            "description": "Metadata for the agent's policy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "AgentCreate"
+      },
+      "AgentResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Name of the agent"
+          },
+          "policy_metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Policy Metadata",
+            "description": "Metadata for the agent's policy"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique ID of the agent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id"
+        ],
+        "title": "AgentResponse"
+      },
+      "AgentUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Name of the agent"
+          },
+          "policy_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Metadata",
+            "description": "Metadata for the agent's policy"
+          }
+        },
+        "type": "object",
+        "title": "AgentUpdate"
+      },
+      "AnonymizedGridState": {
+        "properties": {
+          "total_pooled_capacity_kwh": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Total Pooled Capacity Kwh",
+            "description": "Aggregate pooled surplus energy from the coalition (kWh)."
+          },
+          "participating_microgrid_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Participating Microgrid Count",
+            "description": "Number of microgrids participating in the coalition."
+          },
+          "aggregate_demand_signal": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Aggregate Demand Signal",
+            "description": "Normalised grid demand signal [0, 1]."
+          },
+          "average_market_price": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Average Market Price",
+            "description": "Avg clearing price across recent settlements ($/kWh)."
+          },
+          "round_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Round Fraction",
+            "description": "Episode progress: elapsed rounds / total rounds [0, 1]."
+          },
+          "stability_margin": {
+            "type": "number",
+            "title": "Stability Margin",
+            "description": "LP coalitional stability margin (positive = stable)."
+          },
+          "peer_cooperation_rate": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Peer Cooperation Rate",
+            "description": "Fraction of agents that were COOPERATIVE last step."
+          },
+          "exogenous_stress_index": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Exogenous Stress Index",
+            "description": "Aggregate exogenous stress [0, 1] from RAG pipeline."
+          },
+          "exogenous_signal_stale": {
+            "type": "boolean",
+            "title": "Exogenous Signal Stale",
+            "description": "True if exogenous_stress_index was read from stale cache (circuit open).",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_pooled_capacity_kwh",
+          "participating_microgrid_count",
+          "aggregate_demand_signal",
+          "average_market_price",
+          "round_fraction",
+          "stability_margin",
+          "peer_cooperation_rate",
+          "exogenous_stress_index"
+        ],
+        "title": "AnonymizedGridState",
+        "description": "Aggregate, anonymized snapshot of the coalition state.\n\nThis is the sole observation input to the Oracle policy.  No per-agent\nidentifiers, battery capacities, or generation costs are present.\n\nAttributes\n----------\ntotal_pooled_capacity_kwh:\n    Sum of all surplus energy voluntarily pooled by coalition members.\nparticipating_microgrid_count:\n    Number of microgrids currently in the active coalition.\naggregate_demand_signal:\n    Normalised grid-level demand signal in [0, 1].\n    0 = well below baseline; 1 = extreme peak demand.\naverage_market_price:\n    Current average clearing price across recent settlements ($/kWh).\nround_fraction:\n    Elapsed negotiation rounds / total rounds (episode progress in [0, 1]).\nstability_margin:\n    Farsighted coalitional stability margin from the LP solver.\n    Positive = stable; negative = at risk.\npeer_cooperation_rate:\n    Fraction of observed agents that chose COOPERATIVE last step.\nexogenous_stress_index:\n    Aggregate exogenous stress level produced by the RAG pipeline\n    (e.g. storm risk + regulatory pressure + demand spike) in [0, 1]."
+      },
+      "BindingConstraintSchema": {
+        "properties": {
+          "coalition": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Coalition",
+            "description": "Members of the deviating coalition T"
+          },
+          "slack": {
+            "type": "number",
+            "title": "Slack",
+            "description": "Residual slack SUM_i_in_T x_i* - v(T)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "coalition",
+          "slack"
+        ],
+        "title": "BindingConstraintSchema"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse"
+      },
+      "MetricsResponse": {
+        "properties": {
+          "total_deficit_events": {
+            "type": "integer",
+            "title": "Total Deficit Events"
+          },
+          "fallback_events": {
+            "type": "integer",
+            "title": "Fallback Events"
+          },
+          "fallback_rate": {
+            "type": "number",
+            "title": "Fallback Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_deficit_events",
+          "fallback_events",
+          "fallback_rate"
+        ],
+        "title": "MetricsResponse",
+        "description": "JSON representation of current engine metrics."
+      },
+      "NegotiationActionEnum": {
+        "type": "string",
+        "enum": [
+          "ACCEPT",
+          "COUNTER_OFFER",
+          "WALK_AWAY"
+        ],
+        "title": "NegotiationActionEnum"
+      },
+      "NegotiationRequest": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id",
+            "description": "The ID of the agent evaluating the offer."
+          },
+          "opponent_id": {
+            "type": "string",
+            "title": "Opponent Id",
+            "description": "The ID of the other agent."
+          },
+          "current_offer_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Offer Price",
+            "description": "The price offered by the opponent. None if opening round."
+          },
+          "current_requested_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Requested Kwh",
+            "description": "The kWh requested."
+          },
+          "round_number": {
+            "type": "integer",
+            "title": "Round Number",
+            "description": "Current round of negotiation."
+          },
+          "surplus": {
+            "type": "number",
+            "title": "Surplus",
+            "description": "Implied surplus before discounting."
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "opponent_id",
+          "round_number",
+          "surplus"
+        ],
+        "title": "NegotiationRequest"
+      },
+      "NegotiationResponse": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/NegotiationActionEnum",
+            "description": "The action chosen by the agent."
+          },
+          "counter_offer_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counter Offer Price",
+            "description": "If COUNTER_OFFER, the new price."
+          },
+          "counter_requested_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counter Requested Kwh",
+            "description": "If COUNTER_OFFER, the new requested kWh."
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "NegotiationResponse"
+      },
+      "OracleSignalRequest": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/AnonymizedGridState",
+            "description": "Anonymized aggregate coalition state (no hidden agent fields)."
+          },
+          "state_vector": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Vector",
+            "description": "[DEPRECATED] Raw float state vector; use `state` instead."
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "OracleSignalRequest",
+        "description": "Request body for POST /oracle/signal.\n\nThe client provides an AnonymizedGridState; no per-agent identifiers or\nhidden fields (battery_capacity, generation_cost) are accepted."
+      },
+      "OracleSignalResponse": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "title": "Signal",
+            "description": "Machine-readable signal label chosen by the Oracle policy."
+          },
+          "broadcast_text": {
+            "type": "string",
+            "title": "Broadcast Text",
+            "description": "Human-readable framed message for coalition broadcast."
+          },
+          "action_id": {
+            "type": "integer",
+            "title": "Action Id",
+            "description": "Integer action index selected by the Oracle actor."
+          },
+          "action_probs": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Action Probs",
+            "description": "Probability distribution over all Oracle actions."
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Probability mass on the chosen action (softmax confidence)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal",
+          "broadcast_text",
+          "action_id",
+          "action_probs",
+          "confidence"
+        ],
+        "title": "OracleSignalResponse",
+        "description": "Response body for POST /oracle/signal."
+      },
+      "QRECalibrateRequest": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id",
+            "description": "ID of the agent to persist the calibrated lambda for"
+          },
+          "temperature": {
+            "type": "number",
+            "title": "Temperature",
+            "description": "Temperature value for QRE calibration"
+          },
+          "payoff_matrix": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Payoff Matrix",
+            "description": "Payoff matrix for the game"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "temperature",
+          "payoff_matrix"
+        ],
+        "title": "QRECalibrateRequest"
+      },
+      "QRECalibrateResponse": {
+        "properties": {
+          "lambda_mapping": {
+            "type": "number",
+            "title": "Lambda Mapping",
+            "description": "Calculated lambda mapping"
+          },
+          "choice_probabilities": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Choice Probabilities",
+            "description": "QRE choice probabilities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lambda_mapping",
+          "choice_probabilities"
+        ],
+        "title": "QRECalibrateResponse"
+      },
+      "ReadyResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "db": {
+            "type": "string",
+            "title": "Db"
+          },
+          "redis": {
+            "type": "string",
+            "title": "Redis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "db",
+          "redis"
+        ],
+        "title": "ReadyResponse"
+      },
+      "StabilityVerifyRequest": {
+        "properties": {
+          "coalition": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Coalition",
+            "description": "List of microgrid IDs forming the coalition"
+          },
+          "surplus_map": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Surplus Map",
+            "description": "Optional per-agent surplus values. Missing agents default to 1.0. If omitted, the LP tests structural stability only."
+          }
+        },
+        "type": "object",
+        "required": [
+          "coalition"
+        ],
+        "title": "StabilityVerifyRequest"
+      },
+      "StabilityVerifyResponse": {
+        "properties": {
+          "isStable": {
+            "type": "boolean",
+            "title": "Isstable",
+            "description": "Whether the coalition is farsightedly stable"
+          },
+          "margin": {
+            "type": "number",
+            "title": "Margin",
+            "description": "Min slack across all permissible deviating coalitions"
+          },
+          "deviating_coalition": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deviating Coalition",
+            "description": "Worst deviating coalition; non-null only when isStable=False"
+          },
+          "binding_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/BindingConstraintSchema"
+            },
+            "type": "array",
+            "title": "Binding Constraints",
+            "description": "Constraints active at the LP optimum"
+          },
+          "rounds": {
+            "type": "integer",
+            "title": "Rounds",
+            "description": "Number of constraint-generation rounds"
+          },
+          "converged": {
+            "type": "boolean",
+            "title": "Converged",
+            "description": "True if solver converged; False if cap hit"
+          },
+          "solve_time_ms": {
+            "type": "number",
+            "title": "Solve Time Ms",
+            "description": "Wall-clock solver time in milliseconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "isStable",
+          "margin",
+          "rounds",
+          "converged",
+          "solve_time_ms"
+        ],
+        "title": "StabilityVerifyResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

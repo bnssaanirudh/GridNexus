@@ -1,0 +1,170 @@
+# =============================================================================
+# GridNexus – Docker Compose
+# Wires the three-layer stack: engine (FastAPI), broker (Express/TS),
+# command-center (React/Vite), plus PostgreSQL 16 and Redis 7.
+# All services share a single bridge network: gridnexus-net.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 – ACID-compliant audit trail store
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gridnexus-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gridnexus
+      POSTGRES_PASSWORD: gridnexus_dev
+      POSTGRES_DB: gridnexus
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gridnexus"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - gridnexus-net
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 – BullMQ task queue backing store
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: gridnexus-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - gridnexus-net
+
+  # ---------------------------------------------------------------------------
+  # Layer 1 – engine (Python 3.11, FastAPI)
+  # ---------------------------------------------------------------------------
+  engine:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+    container_name: gridnexus-engine
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./engine/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://gridnexus:gridnexus_dev@postgres:5432/gridnexus
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - gridnexus-net
+
+  # ---------------------------------------------------------------------------
+  # Layer 2 – broker (Node 20, Express, TypeScript)
+  # ---------------------------------------------------------------------------
+  broker:
+    build:
+      context: ./broker
+      dockerfile: Dockerfile
+    container_name: gridnexus-broker
+    restart: unless-stopped
+    command: sh -c "npx prisma db push --skip-generate && node dist/index.js"
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./broker/.env
+    environment:
+      - DATABASE_URL=postgresql://gridnexus:gridnexus_dev@postgres:5432/gridnexus
+      - REDIS_URL=redis://redis:6379/0
+      - ENGINE_URL=http://engine:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http = require('http'); const req = http.get('http://127.0.0.1:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1));\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - gridnexus-net
+
+  # ---------------------------------------------------------------------------
+  # Layer 2 – broker-worker (Node 20, BullMQ worker)
+  # ---------------------------------------------------------------------------
+  broker-worker:
+    build:
+      context: ./broker
+      dockerfile: Dockerfile
+    container_name: gridnexus-broker-worker
+    command: npm run worker
+    restart: unless-stopped
+    env_file:
+      - ./broker/.env
+    environment:
+      - DATABASE_URL=postgresql://gridnexus:gridnexus_dev@postgres:5432/gridnexus
+      - REDIS_URL=redis://redis:6379/0
+      - ENGINE_URL=http://engine:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    networks:
+      - gridnexus-net
+
+  # ---------------------------------------------------------------------------
+  # Layer 3 – command-center (React 18, Vite, TypeScript)
+  # ---------------------------------------------------------------------------
+  command-center:
+    build:
+      context: ./command-center
+      dockerfile: Dockerfile
+    container_name: gridnexus-command-center
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - engine
+      - broker
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:5173/healthz > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - gridnexus-net
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  gridnexus-net:
+    driver: bridge

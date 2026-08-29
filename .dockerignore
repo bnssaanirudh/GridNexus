@@ -1,0 +1,49 @@
+# .dockerignore
+# Exclude all secrets, environment files, local caches, and IDE artifacts
+.env
+.env.*
+!.env.example
+*.local
+
+# Version control & OS
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Python caches & virtualenvs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+coverage.xml
+.ruff_cache/
+.mypy_cache/
+
+# Node caches & modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+test-results/
+playwright-report/
+
+# Docs & Scratch
+docs/
+artifacts/
+scratch/
+*.md
+*.png
+*.svg

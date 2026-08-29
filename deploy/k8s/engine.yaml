@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engine
+  namespace: gridnexus
+  labels:
+    app.kubernetes.io/name: engine
+    app.kubernetes.io/part-of: gridnexus-vpp
+    app.kubernetes.io/component: layer1-ai-core
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: engine
+  template:
+    metadata:
+      labels:
+        app: engine
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: engine
+          image: gridnexus/engine:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: gridnexus-config
+            - secretRef:
+                name: gridnexus-secrets
+          resources:
+            limits:
+              cpu: "4000m"
+              memory: "4096Mi"
+            requests:
+              cpu: "1000m"
+              memory: "1024Mi"
+          # Liveness Probe: process is alive
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Readiness Probe: DB & Redis dependencies are operational
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: engine
+  namespace: gridnexus
+  labels:
+    app.kubernetes.io/name: engine
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+  selector:
+    app: engine

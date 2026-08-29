@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GridNexus Layer 1 (Engine) API Reference</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #232629;
+      color: #E8EAED;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #redoc-container {
+      background-color: #232629;
+    }
+    .redoc-header {
+      background: #1e2022;
+      border-bottom: 1px solid rgba(42, 169, 255, 0.2);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .redoc-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      color: #2AA9FF;
+      font-size: 1.1rem;
+    }
+    .redoc-badge {
+      background: rgba(42, 169, 255, 0.15);
+      border: 1px solid rgba(42, 169, 255, 0.3);
+      color: #2AA9FF;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="redoc-header">
+    <div class="redoc-brand">
+      <span>⚡ GridNexus</span>
+      <span style="color: #9AA0A6; font-weight: 400; font-size: 0.9rem;">| Layer 1 Engine API Reference</span>
+    </div>
+    <span class="redoc-badge">FastAPI OpenAPI 3.1.0</span>
+  </div>
+
+  <div id="redoc-container"></div>
+
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+  <script>
+    // Fetch and initialize Redoc with custom dark theme matching GridNexus
+    fetch('./openapi.json')
+      .then(res => res.json())
+      .then(spec => {
+        Redoc.init(spec, {
+          theme: {
+            colors: {
+              primary: {
+                main: '#2AA9FF'
+              },
+              success: {
+                main: '#22C55E'
+              },
+              warning: {
+                main: '#F5A623'
+              },
+              error: {
+                main: '#EF4444'
+              },
+              text: {
+                primary: '#E8EAED',
+                secondary: '#9AA0A6'
+              },
+              http: {
+                get: '#2AA9FF',
+                post: '#22C55E',
+                put: '#F5A623',
+                delete: '#EF4444'
+              }
+            },
+            typography: {
+              fontSize: '14px',
+              fontFamily: "'Inter', sans-serif",
+              headings: {
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: '600'
+              },
+              code: {
+                fontFamily: "'JetBrains Mono', monospace"
+              }
+            },
+            sidebar: {
+              backgroundColor: '#1E2022',
+              textColor: '#E8EAED',
+              activeTextColor: '#2AA9FF'
+            },
+            rightPanel: {
+              backgroundColor: '#181A1B',
+              textColor: '#FFFFFF'
+            }
+          },
+          hideDownloadButton: false,
+          disableSearch: false,
+          scrollYOffset: 50
+        }, document.getElementById('redoc-container'));
+      })
+      .catch(err => {
+        document.getElementById('redoc-container').innerHTML =
+          '<div style="padding: 40px; text-align: center; color: #EF4444;">Failed to load openapi.json: ' + err.message + '</div>';
+      });
+  </script>
+</body>
+</html>

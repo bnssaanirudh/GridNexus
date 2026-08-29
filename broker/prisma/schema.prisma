@@ -1,0 +1,426 @@
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "linux-musl", "windows", "linux-musl-openssl-3.0.x"]
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model Microgrid {
+  id                    String            @id @default(uuid())
+  externalCode          String?           @unique
+  name                  String
+  type                  String
+  latitude              Decimal?          @db.Decimal(10, 6)
+  longitude             Decimal?          @db.Decimal(10, 6)
+  active                Boolean           @default(true)
+  createdAt             DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime          @updatedAt @db.Timestamptz(6)
+
+  // Stored as encrypted strings using application-level encryption
+  hiddenbatterycapacity String
+  hiddengenerationcost  String
+  agents                Agent[]
+  transfersOut          EnergyTransfer[]  @relation("TransfersOut")
+  transfersIn           EnergyTransfer[]  @relation("TransfersIn")
+  ders                  DER[]
+  busMappings           MicrogridBusMapping[]
+
+  @@map("microgrids")
+}
+
+model Agent {
+  id          String       @id @default(uuid())
+  microgridId String
+  type        String
+  qre_lambda  Decimal?     @db.Decimal(10, 4)
+  microgrid   Microgrid    @relation(fields: [microgridId], references: [id])
+  rlRewards   RlReward[]
+
+  @@map("agents")
+}
+
+model Negotiation {
+  id                String           @id @default(uuid())
+  status            String           // CREATED | NEGOTIATING | PROVISIONALLY_ACCEPTED | COMMITTED | FAILED
+  sellerMicrogridId String?
+  buyerMicrogridId  String?
+  currency          String           @default("USD")
+  createdAt         DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(6)
+
+  beliefUpdates     BeliefUpdate[]
+  rlRewards         RlReward[]
+  energyTransfers   EnergyTransfer[]
+  negotiationRounds NegotiationRound[]
+  settlements       Settlement[]
+  auditEvents       AuditEvent[]
+
+  @@map("negotiations")
+}
+
+model OracleSignal {
+  id            String         @id @default(uuid())
+  signalData    String
+  createdAt     DateTime       @default(now()) @db.Timestamptz(6)
+  beliefUpdates BeliefUpdate[]
+
+  @@map("oraclesignals")
+}
+
+model BeliefUpdate {
+  id                 String       @id @default(uuid())
+  negotiationId      String
+  triggeringsignalid String
+  
+  // Expanded Bayesian parameters
+  prior              Decimal      @db.Decimal(10, 4)
+  likelihood         Decimal      @db.Decimal(10, 4)
+  posterior          Decimal      @db.Decimal(10, 4)
+  confidence         Decimal      @db.Decimal(10, 4)
+  hypothesis         String?
+  stalenessTimestamp DateTime?    @db.Timestamptz(6)
+
+  // Legacy mappings for backward compatibility
+  beforeBelief       Decimal      @db.Decimal(10, 4)
+  afterBelief        Decimal      @db.Decimal(10, 4)
+
+  // "LLM" = LLM produced the decision; "DQN_GATE" = DQN overrode the LLM action
+  decisionSource     String       @default("LLM")
+  // agent that owns this belief update (nullable for legacy rows)
+  agentId            String?      
+  // PENDING while oracle cycle is computing, COMPLETE when posterior is written, ERROR on failure
+  status             String       @default("COMPLETE")
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
+
+  negotiation        Negotiation  @relation(fields: [negotiationId], references: [id])
+  oracleSignal       OracleSignal @relation(fields: [triggeringsignalid], references: [id])
+
+  @@index([agentId, status])
+  @@map("beliefupdates")
+}
+
+model NegotiationRound {
+  id              String       @id @default(uuid())
+  negotiationId   String
+  roundNumber     Int
+  activeAgentId   String
+  opponentAgentId String
+  action          String
+  surplus         Decimal      @db.Decimal(10, 4)
+  decisionSource  String
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+
+  negotiation     Negotiation  @relation(fields: [negotiationId], references: [id])
+
+  @@index([negotiationId])
+  @@map("negotiation_rounds")
+}
+
+model RlReward {
+  id            String      @id @default(uuid())
+  agentId       String
+  negotiationId String
+  rewardValue   Decimal     @db.Decimal(10, 4)
+  
+  agent         Agent       @relation(fields: [agentId], references: [id])
+  negotiation   Negotiation @relation(fields: [negotiationId], references: [id])
+
+  @@map("rlrewards")
+}
+
+model StabilityCheck {
+  id                 String           @id @default(uuid())
+  isStable           Boolean
+  margin             Decimal          @db.Decimal(10, 4)
+  violatingDeviation String?          @db.Text
+  topologyVersion    Int?
+  negotiationId      String?
+  createdAt          DateTime         @default(now()) @db.Timestamptz(6)
+  energyTransfers    EnergyTransfer[]
+  settlements        Settlement[]
+
+  @@map("stabilitychecks")
+}
+
+model GridFeasibilityCertificate {
+  id                String           @id @default(uuid())
+  negotiationId     String?
+  networkVersion    Int
+  solver            String
+  solverVersion     String
+  feasible          Boolean
+  violations        Json?            // Array of violation strings
+  maxLineLoadingPct Decimal?         @db.Decimal(10, 4)
+  minVoltagePu      Decimal?         @db.Decimal(10, 4)
+  maxVoltagePu      Decimal?         @db.Decimal(10, 4)
+  powerBalanceError Decimal?         @db.Decimal(10, 6)
+  inputHash         String           @db.Text
+  resultHash        String           @db.Text
+  createdAt         DateTime         @default(now()) @db.Timestamptz(6)
+  energyTransfers   EnergyTransfer[]
+
+  @@map("grid_feasibility_certificates")
+}
+
+model EnergyTransfer {
+  id                  String         @id @default(uuid())
+  fromMicrogridId     String
+  toMicrogridId       String
+  amount              Decimal        @db.Decimal(10, 4)
+  price               Decimal        @db.Decimal(10, 4)
+  currency            String         @default("USD")
+  energyUnit          String         @default("kWh")
+  status              String         @default("COMMITTED") // PROVISIONAL | VERIFYING | COMMITTED | FAILED
+
+  // Delivery intervals
+  startTime           DateTime       @db.Timestamptz(6)
+  intervalMinutes     Int
+  energyKwh           Decimal        @db.Decimal(10, 4)
+  averagePowerKw      Decimal        @db.Decimal(10, 4)
+  createdAt           DateTime       @default(now()) @db.Timestamptz(6)
+
+  stabilitycheckid    String
+  gridcertificateid   String
+  negotiationId       String?
+  settlementId        String?
+
+  fromMicrogrid       Microgrid      @relation("TransfersOut", fields: [fromMicrogridId], references: [id])
+  toMicrogrid         Microgrid      @relation("TransfersIn", fields: [toMicrogridId], references: [id])
+  stabilityCheck      StabilityCheck @relation(fields: [stabilitycheckid], references: [id])
+  gridCertificate     GridFeasibilityCertificate @relation(fields: [gridcertificateid], references: [id])
+  negotiation         Negotiation?   @relation(fields: [negotiationId], references: [id])
+  settlement          Settlement?    @relation(fields: [settlementId], references: [id])
+
+  @@map("energytransfers")
+}
+
+// -- Reasoning-Deficit Tolerance ----------------------------------
+// Records every round in which the LLM produced malformed or economically
+// invalid output. fallbackUsed=true means all 3 retries were exhausted and
+// the DQN wrapper selected the final action instead of the LLM.
+model ReasoningDeficit {
+  id              String   @id @default(uuid())
+  agentId         String
+  negotiationId   String
+  round           Int
+  rawLlmOutput    String   @db.Text
+  validationError String   @db.Text
+  fallbackUsed    Boolean  @default(false)
+  timestamp       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([agentId])
+  @@index([negotiationId])
+  @@map("reasoning_deficits")
+}
+
+// -- RAG Pipeline Exogenous Signals -------------------------------
+model EmbeddedDocument {
+  id                    String   @id @default(uuid())
+  sourceType            String
+  sourceName            String?
+  sourceUri             String?
+  publisher             String?
+  content               String   @db.Text
+  contentHash           String?
+  observedAt            DateTime? @db.Timestamptz(6)
+  validFrom             DateTime? @db.Timestamptz(6)
+  validUntil            DateTime? @db.Timestamptz(6)
+  trustScore            Decimal?  @db.Decimal(5, 4)
+  connectorVersion      String?
+  embeddingModel        String?
+  embeddingModelVersion String?
+  embeddingDimension    Int?
+  metadata              Json?
+  
+  // pgvector extension column mapped via Unsupported
+  embedding             Unsupported("vector(384)")
+  ingestedAt            DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([contentHash])
+  @@map("embedded_documents")
+}
+
+model RetrievedContextAudit {
+  id              String   @id @default(uuid())
+  query           String   @db.Text
+  documentIds     String[] // Array of embedded document UUIDs
+  similarityScore Decimal? @db.Decimal(5, 4)
+  ranking         Int?
+  modelVersion    String?
+  timestamp       DateTime @default(now()) @db.Timestamptz(6)
+  
+  @@map("retrieved_context_audits")
+}
+
+// -- Audit Trail Hardening -----------------------------------------
+
+model Reconciliation {
+  id          String   @id @default(uuid())
+  tableName   String
+  rowId       String
+  action      String
+  performedBy String
+  reason      String
+  timestamp   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("reconciliations")
+}
+
+model IntegritySnapshot {
+  id            String   @id @default(uuid())
+  tableName     String
+  rowCount      Int
+  checksum      String   @db.Text
+  computedAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("integrity_snapshots")
+}
+
+// -- Canonical Physical Topology & DER Identity -------------------
+
+model DER {
+  id                String    @id @default(uuid())
+  microgridId       String
+  type              String
+  ratedPowerKw      Decimal   @db.Decimal(10, 4)
+  energyCapacityKwh Decimal?  @db.Decimal(10, 4)
+  minPowerKw        Decimal   @db.Decimal(10, 4)
+  maxPowerKw        Decimal   @db.Decimal(10, 4)
+  efficiency        Decimal   @db.Decimal(5, 4)
+  metadata          Json?
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(6)
+
+  microgrid         Microgrid @relation(fields: [microgridId], references: [id])
+
+  @@index([microgridId])
+  @@map("ders")
+}
+
+model Bus {
+  id             String    @id @default(uuid())
+  externalCode   String?   @unique
+  voltageLevelKv Decimal   @db.Decimal(10, 4)
+  latitude       Decimal?  @db.Decimal(10, 6)
+  longitude      Decimal?  @db.Decimal(10, 6)
+
+  linesFrom      Line[]    @relation("LinesFrom")
+  linesTo        Line[]    @relation("LinesTo")
+  microgrids     MicrogridBusMapping[]
+
+  @@map("buses")
+}
+
+model Line {
+  id             String    @id @default(uuid())
+  fromBusId      String
+  toBusId        String
+  resistance     Decimal   @db.Decimal(10, 6)
+  reactance      Decimal   @db.Decimal(10, 6)
+  thermalLimitKw Decimal   @db.Decimal(10, 4)
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  fromBus        Bus       @relation("LinesFrom", fields: [fromBusId], references: [id])
+  toBus          Bus       @relation("LinesTo", fields: [toBusId], references: [id])
+
+  @@index([fromBusId])
+  @@index([toBusId])
+  @@map("lines")
+}
+
+model MicrogridBusMapping {
+  id          String    @id @default(uuid())
+  microgridId String
+  busId       String
+  phase       String?
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+
+  microgrid   Microgrid @relation(fields: [microgridId], references: [id])
+  bus         Bus       @relation(fields: [busId], references: [id])
+
+  @@unique([microgridId, busId])
+  @@index([busId])
+  @@map("microgrid_bus_mappings")
+}
+
+model TopologyRevision {
+  id        String   @id @default(uuid())
+  version   Int      @unique @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  notes     String?
+
+  @@map("topology_revisions")
+}
+
+// -- Identity & Access Management -----------------------------------------
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @db.Text
+  role         String    @default("VIEWER") // ADMIN | GRID_OPERATOR | DER_OWNER | AUDITOR | VIEWER
+  microgridId  String?   // For DER_OWNER: the microgrid they control
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([email])
+  @@map("users")
+}
+
+// -- Settlement Lifecycle -------------------------------------------------
+
+model Settlement {
+  id                  String    @id @default(uuid())
+  idempotencyKey      String    @unique
+  negotiationId       String
+  sellerMicrogridId   String
+  buyerMicrogridId    String
+  energyKwh           Decimal   @db.Decimal(10, 4)
+  pricePerKwh         Decimal   @db.Decimal(10, 4)
+  currency            String    @default("USD")
+  deliveryStart       DateTime  @db.Timestamptz(6)
+  deliveryEnd         DateTime  @db.Timestamptz(6)
+  status              String    @default("PROVISIONAL") // PROVISIONAL | VERIFYING | COMMITTING | COMMITTED | FAILED
+  auditHash           String?   @db.Text
+  stabilityCheckId    String?
+  gridCertificateId   String?
+  createdAt           DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(6)
+
+  negotiation         Negotiation @relation(fields: [negotiationId], references: [id])
+  stabilityCheck      StabilityCheck? @relation(fields: [stabilityCheckId], references: [id])
+  gridCertificate     GridFeasibilityCertificate? @relation(fields: [gridCertificateId], references: [id])
+  energyTransfers     EnergyTransfer[]
+
+  @@index([negotiationId])
+  @@map("settlements")
+}
+
+// -- Cryptographic Audit Event Chain ---------------------------------------
+
+model AuditEvent {
+  id            String    @id @default(uuid())
+  sequence      Int       @unique @default(autoincrement())
+  eventType     String    // NEGOTIATION_STARTED | OFFER_MADE | VALIDATION_PASSED | VALIDATION_FAILED | SAFETY_CHECKED | STABILITY_CHECKED | GRID_CERTIFIED | SETTLEMENT_PROVISIONAL | SETTLEMENT_COMMITTED | SETTLEMENT_FAILED | BELIEF_UPDATE_STARTED | BELIEF_UPDATE_COMPLETED | BELIEF_UPDATE_FAILED
+  negotiationId String?
+  actorId       String?   // userId or agentId
+  previousHash  String    @db.Text // SHA-256 of prior event; "0" for genesis
+  eventHash     String    @db.Text // SHA-256(previousHash || canonicalPayloadJSON)
+  payload       Json
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  negotiation   Negotiation? @relation(fields: [negotiationId], references: [id])
+
+  @@index([negotiationId])
+  @@index([sequence])
+  @@map("audit_events")
+}

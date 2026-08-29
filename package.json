@@ -1,0 +1,19 @@
+{
+  "name": "gridnexus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GridNexus – Decentralized Energy-5.0 Virtual Power Plant platform",
+  "workspaces": [
+    "broker",
+    "command-center"
+  ],
+  "type": "module",
+  "scripts": {
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "simulate": "node scripts/simulate_negotiation.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

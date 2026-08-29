@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broker
+  namespace: gridnexus
+  labels:
+    app.kubernetes.io/name: broker
+    app.kubernetes.io/part-of: gridnexus-vpp
+    app.kubernetes.io/component: layer2-state-broker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: broker
+  template:
+    metadata:
+      labels:
+        app: broker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: broker
+          image: gridnexus/broker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: gridnexus-config
+            - secretRef:
+                name: gridnexus-secrets
+          resources:
+            limits:
+              cpu: "2000m"
+              memory: "2048Mi"
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broker-worker
+  namespace: gridnexus
+  labels:
+    app.kubernetes.io/name: broker-worker
+    app.kubernetes.io/part-of: gridnexus-vpp
+    app.kubernetes.io/component: layer2-bullmq-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: broker-worker
+  template:
+    metadata:
+      labels:
+        app: broker-worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: worker
+          image: gridnexus/broker:latest
+          command: ["npm", "run", "worker"]
+          envFrom:
+            - configMapRef:
+                name: gridnexus-config
+            - secretRef:
+                name: gridnexus-secrets
+          resources:
+            limits:
+              cpu: "2000m"
+              memory: "2048Mi"
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker
+  namespace: gridnexus
+  labels:
+    app.kubernetes.io/name: broker
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+  selector:
+    app: broker

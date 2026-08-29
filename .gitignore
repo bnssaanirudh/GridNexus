@@ -1,0 +1,78 @@
+# ============================================================
+# GridNexus .gitignore
+# Covers: Python, Node.js, Docker, IDE artifacts
+# ============================================================
+
+# ---- Environment & Secrets ----
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# ---- Poetry ----
+# Don't commit the virtual env Poetry creates inside the project
+.poetry/
+
+# ---- Node.js ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+*.tsbuildinfo
+
+# ---- Vite / React build artifacts ----
+command-center/dist/
+broker/dist/
+test-results/
+playwright-report/
+
+# ---- Docker ----
+docker-compose.override.yml
+.docker/
+
+# ---- IDE & Editor ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ---- OS ----
+.DS_Store
+ehthumbs.db
+Desktop.ini
+
+# ---- Misc ----
+*.log
+tmp/
+temp/

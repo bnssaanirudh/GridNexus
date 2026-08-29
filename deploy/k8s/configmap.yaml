@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gridnexus-config
+  namespace: gridnexus
+  labels:
+    app.kubernetes.io/name: gridnexus
+    app.kubernetes.io/part-of: gridnexus-vpp
+data:
+  NODE_ENV: "production"
+  BROKER_PORT: "3000"
+  ENGINE_PORT: "8000"
+  ENGINE_URL: "http://engine.gridnexus.svc.cluster.local:8000"
+  BROKER_URL: "http://broker.gridnexus.svc.cluster.local:3000"
+  SHINY_URL: "http://geospatial.gridnexus.svc.cluster.local:3838"
+  ORACLE_BROADCAST_INTERVAL_MS: "30000"
+  INTEGRITY_CHECK_INTERVAL_MS: "3600000"

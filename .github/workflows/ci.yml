@@ -1,0 +1,357 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - '**'
+
+jobs:
+  engine-tests:
+    name: Engine Tests (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        working-directory: ./engine
+        run: poetry install --with dev --no-root
+
+      - name: Install torch (CPU wheel – avoids 2.5 GB CUDA bundle)
+        working-directory: ./engine
+        run: poetry run pip install torch==2.4.0 --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Run pytest with coverage
+        working-directory: ./engine
+        run: poetry run pytest -v
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-coverage
+          path: ./engine/coverage.xml
+
+  adversarial-tests:
+    name: Adversarial Stress Tests (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        working-directory: ./engine
+        run: poetry install --with dev --no-root
+
+      - name: Install torch (CPU wheel)
+        working-directory: ./engine
+        run: poetry run pip install torch==2.4.0 --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Run adversarial test suite
+        working-directory: ./engine
+        # --no-cov avoids failing the job because running only 3 tests drops total coverage below 85%
+        run: poetry run pytest tests/adversarial/ -v --no-cov
+
+  broker-tests:
+    name: Broker Tests (Node.js)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gridnexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./broker
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+        run: npx prisma generate
+
+      - name: Apply DB Migrations
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+        run: npx prisma db push
+
+      - name: Run Jest tests
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          REDIS_URL: redis://localhost:6379
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        run: npm test
+
+  smoke-test:
+    name: Docker Compose Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up environment files
+        run: |
+          # Both services need DATABASE_URL and REDIS_URL pointing to Compose service names
+          printf 'ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nDATABASE_URL=postgresql://gridnexus:gridnexus_dev@postgres:5432/gridnexus\nREDIS_URL=redis://redis:6379\n' > engine/.env
+          printf 'ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nDATABASE_URL=postgresql://gridnexus:gridnexus_dev@postgres:5432/gridnexus\nREDIS_URL=redis://redis:6379\n' > broker/.env
+
+      - name: Start Docker Compose
+        run: docker compose up --build -d
+
+      - name: Wait for services to become healthy
+        run: |
+          TIMEOUT=600
+          START=$(date +%s)
+          EXPECTED="postgres redis engine broker command-center"
+
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - START))
+            if [ "$ELAPSED" -gt "$TIMEOUT" ]; then
+              echo "Timeout waiting for services to become healthy."
+              docker compose ps -a
+              echo "--- engine logs ---"
+              docker compose logs engine --tail 60
+              echo "--- broker logs ---"
+              docker compose logs broker --tail 60
+              exit 1
+            fi
+
+            ALL_HEALTHY=true
+            for svc in $EXPECTED; do
+              cid=$(docker compose ps -q "$svc" 2>/dev/null)
+              if [ -z "$cid" ]; then
+                echo "[$svc] container not created yet"
+                ALL_HEALTHY=false
+                continue
+              fi
+
+              state=$(docker inspect -f '{{.State.Status}}' "$cid")
+              health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid")
+
+              if [ "$state" = "restarting" ] || [ "$state" = "exited" ]; then
+                echo "[$svc] is in state=$state — failing fast"
+                docker compose logs "$svc" --tail 50
+                exit 1
+              fi
+
+              if [ "$health" = "none" ]; then
+                # No healthcheck — just need it running
+                if [ "$state" != "running" ]; then
+                  echo "[$svc] not running yet (state=$state)"
+                  ALL_HEALTHY=false
+                fi
+              elif [ "$health" = "unhealthy" ]; then
+                echo "[$svc] is unhealthy"
+                docker compose logs "$svc" --tail 50
+                exit 1
+              elif [ "$health" != "healthy" ]; then
+                echo "[$svc] health=$health (waiting...)"
+                ALL_HEALTHY=false
+              fi
+            done
+
+            if [ "$ALL_HEALTHY" = true ]; then
+              echo "All services are healthy/running!"
+              docker compose ps
+              break
+            fi
+
+            echo "Waiting... (${ELAPSED}s elapsed)"
+            sleep 5
+          done
+
+      - name: Curl health endpoints
+        run: |
+          echo "Testing Engine /health..."
+          curl --retry 12 --retry-delay 5 --retry-connrefused -f http://localhost:8000/health
+          echo ""
+          echo "Testing Engine /ready..."
+          curl --retry 12 --retry-delay 5 --retry-connrefused -f http://localhost:8000/ready
+          echo ""
+          echo "Testing Broker /health..."
+          curl --retry 12 --retry-delay 5 --retry-connrefused -f http://localhost:3000/health
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose down
+
+  # ---------------------------------------------------------------------------
+  # Full Trade-Loop Integration Tests
+  # Runs the broker/tests/integration/ suite against a real Postgres+Redis stack.
+  # Acceptance criterion: completes in under 60 seconds.
+  # ---------------------------------------------------------------------------
+  integration-tests:
+    name: Broker Integration Tests (Full Trade-Loop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5          # hard cap – integration suite must be < 60 s
+    needs: broker-tests         # run after unit tests pass
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gridnexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./broker
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+        run: npx prisma generate
+
+      - name: Apply DB migrations
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+        run: npx prisma db push
+
+      - name: Run integration test suite
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          REDIS_URL: redis://localhost:6379
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        run: npx vitest run tests/integration --reporter=verbose
+
+  # ---------------------------------------------------------------------------
+  # Golden-Path End-to-End Regression Test
+  # Validates the complete Oracle → Belief → Stability → Trade FK chain in one
+  # scripted scenario. Runs on every PR as the canonical system regression test.
+  # ---------------------------------------------------------------------------
+  golden-path-test:
+    name: "Golden Path: Oracle → Ledger E2E"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: broker-tests
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gridnexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./broker
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+        run: npx prisma generate
+
+      - name: Apply DB migrations
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+        run: npx prisma db push
+
+      - name: Run golden-path regression test
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          REDIS_URL: redis://localhost:6379
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        run: npx vitest run tests/integration/golden-path.test.ts --reporter=verbose
+

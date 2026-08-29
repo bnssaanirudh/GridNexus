@@ -1,0 +1,26 @@
+name: "GridNexus Core Claims Evaluation"
+description: "Reproducible multi-seed experiment configuration for evaluating the proposed pipeline against baselines."
+output_dir: "artifacts/experiments"
+
+scenarios:
+  - name: "baseline"
+    description: "REINFORCE oracle disabled, random negotiation policies."
+    seeds: [42, 101, 202, 303, 404]
+    oracle_enabled: false
+    mappo_enabled: false
+    num_episodes: 50
+    steps_per_episode: 20
+
+  - name: "proposed"
+    description: "Proposed pipeline with trained REINFORCE Oracle and MAPPO multi-agent negotiation."
+    seeds: [42, 101, 202, 303, 404]
+    oracle_enabled: true
+    mappo_enabled: true
+    num_episodes: 50
+    steps_per_episode: 20
+
+metrics:
+  - "mean_coalition_size"
+  - "mean_surplus_captured"
+  - "fairness_violation_rate"
+  - "mean_stability_margin"
