@@ -137,3 +137,113 @@ class DCPowerFlow:
         }
         
         return results
+
+class SOCPPowerFlow:
+    """
+    Implements Second-Order Cone Programming (SOCP) relaxation for AC Power Flow.
+    Provides rigorous bounds on voltage magnitudes and active/reactive power flows,
+    necessary for Q1 publication standards in distribution grids.
+    """
+    def __init__(self, network: ElectricalNetwork):
+        self.network = network
+        self.node_ids = list(network.nodes.keys())
+        self.node_idx = {nid: i for i, nid in enumerate(self.node_ids)}
+        self.n_nodes = len(self.node_ids)
+        
+        self.slack_idx = 0
+        for i, nid in enumerate(self.node_ids):
+            if network.nodes[nid].is_slack:
+                self.slack_idx = i
+                break
+
+    def solve(self) -> Dict[str, Any]:
+        """
+        Solves the SOCP relaxation.
+        Requires cvxpy to be installed. Returns exact voltages and P/Q flows.
+        """
+        import cvxpy as cp
+        
+        # Variables
+        v_sq = cp.Variable(self.n_nodes)  # Squared voltage magnitudes
+        
+        n_lines = len(self.network.lines)
+        line_ids = list(self.network.lines.keys())
+        line_idx = {lid: i for i, lid in enumerate(line_ids)}
+        
+        P_flow = cp.Variable(n_lines) # Active power flow
+        Q_flow = cp.Variable(n_lines) # Reactive power flow
+        l_sq = cp.Variable(n_lines)   # Squared current magnitude
+        
+        constraints = []
+        base_kw = self.network.base_mva * 1000.0
+        
+        # Voltage limits
+        for i, nid in enumerate(self.node_ids):
+            node = self.network.nodes[nid]
+            if i == self.slack_idx:
+                constraints.append(v_sq[i] == 1.0)
+            else:
+                constraints.append(v_sq[i] >= (node.v_min_pu ** 2))
+                constraints.append(v_sq[i] <= (node.v_max_pu ** 2))
+                
+        # Nodal balance equations
+        for i, nid in enumerate(self.node_ids):
+            node = self.network.nodes[nid]
+            
+            p_inj = (node.p_gen_kw - node.p_load_kw) / base_kw
+            q_inj = (node.q_gen_kvar - node.q_load_kvar) / base_kw
+            
+            # Find lines connected to node i
+            lines_in = []
+            lines_out = []
+            for lid, line in self.network.lines.items():
+                l_i = line_idx[lid]
+                if self.node_idx[line.from_node] == i:
+                    lines_out.append(l_i)
+                elif self.node_idx[line.to_node] == i:
+                    lines_in.append(l_i)
+                    
+            if i != self.slack_idx:
+                # Active power balance
+                P_balance = p_inj + cp.sum([P_flow[l_i] for l_i in lines_in]) - cp.sum([l_sq[l_i] * (self.network.lines[line_ids[l_i]].r_ohms / self.network.get_base_z(self.network.lines[line_ids[l_i]].from_node)) for l_i in lines_in]) - cp.sum([P_flow[l_i] for l_i in lines_out])
+                constraints.append(P_balance == 0)
+                
+                # Reactive power balance
+                Q_balance = q_inj + cp.sum([Q_flow[l_i] for l_i in lines_in]) - cp.sum([l_sq[l_i] * (self.network.lines[line_ids[l_i]].x_ohms / self.network.get_base_z(self.network.lines[line_ids[l_i]].from_node)) for l_i in lines_in]) - cp.sum([Q_flow[l_i] for l_i in lines_out])
+                constraints.append(Q_balance == 0)
+
+        # Ohm's law & SOCP constraints per line
+        for lid, line in self.network.lines.items():
+            l_i = line_idx[lid]
+            fr = self.node_idx[line.from_node]
+            to = self.node_idx[line.to_node]
+            z_base = self.network.get_base_z(line.from_node)
+            r_pu = line.r_ohms / z_base
+            x_pu = line.x_ohms / z_base
+            
+            # v_j = v_i - 2(rP + xQ) + (r^2 + x^2)l
+            constraints.append(v_sq[to] == v_sq[fr] - 2 * (r_pu * P_flow[l_i] + x_pu * Q_flow[l_i]) + (r_pu**2 + x_pu**2) * l_sq[l_i])
+            
+            # SOCP relaxation: P^2 + Q^2 <= v_i * l
+            constraints.append(cp.SOC(v_sq[fr] + l_sq[l_i], cp.vstack([2*P_flow[l_i], 2*Q_flow[l_i], v_sq[fr] - l_sq[l_i]])))
+
+        # Objective: minimize losses (which makes the SOCP relaxation exact for radial distribution networks)
+        objective = cp.Minimize(cp.sum(l_sq))
+        
+        prob = cp.Problem(objective, constraints)
+        prob.solve(solver=cp.ECOS, verbose=False)
+        
+        if prob.status not in ["optimal", "optimal_inaccurate"]:
+            raise ValueError(f"SOCP Solver failed: {prob.status}")
+            
+        voltages_pu = {nid: float(np.sqrt(v_sq.value[i])) for nid, i in self.node_idx.items()}
+        line_flows_kw = {lid: float(P_flow.value[line_idx[lid]]) * base_kw for lid in line_ids}
+        line_loading_pct = {lid: (abs(line_flows_kw[lid]) / max(self.network.lines[lid].thermal_limit_kw, 1e-6)) * 100.0 for lid in line_ids}
+        
+        return {
+            "voltages_pu": voltages_pu,
+            "line_flows_kw": line_flows_kw,
+            "line_loading_pct": line_loading_pct,
+            "status": prob.status
+        }
+

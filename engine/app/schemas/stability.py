@@ -34,7 +34,7 @@ class BindingConstraintSchema(BaseModel):
     slack: float = Field(..., description="Residual slack SUM_i_in_T x_i* - v(T)")
 
 class StabilityVerifyResponse(BaseModel):
-    isStable: bool = Field(..., alias="isCoreStable", description="Whether the coalition is core stable (epsilonStar <= 0)")
+    isStable: bool = Field(..., description="Whether the coalition is core stable (epsilonStar <= 0)")
     epsilonStar: float = Field(..., description="Least-core epsilon value")
     allocation: dict[str, float] = Field(..., description="Allocation of surplus to agents")
     margin: float = Field(..., description="Min slack across all permissible deviating coalitions")

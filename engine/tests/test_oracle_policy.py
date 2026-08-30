@@ -25,12 +25,12 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.oracle.anonymized_state import AnonymizedGridState, OBS_DIM as ANON_OBS_DIM
-from app.oracle.oracle_policy import (
+from app.oracle.inference import (
     OraclePolicy,
     ORACLE_ACTIONS,
-    _sample_random_state,
-    _simulate_oracle_reward,
 )
+from app.oracle.simulation_environment import sample_random_state as _sample_random_state
+from app.oracle.simulation_environment import simulate_environment_response as _simulate_oracle_reward
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ def oracle() -> OraclePolicy:
     from pathlib import Path
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        policy = OraclePolicy(checkpoint_dir=Path(tmpdir), n_train_episodes=10)
+        policy = OraclePolicy(checkpoint_dir=Path(tmpdir))
         yield policy
 
 

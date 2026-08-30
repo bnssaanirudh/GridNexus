@@ -390,7 +390,14 @@ class TestSeparationOracle:
 class TestStabilityRoute:
     """Integration tests for POST /stability/verify."""
 
-    def test_valid_coalition_returns_200(self):
+    from unittest.mock import patch
+    @patch("app.routers.stability.build_topology_from_db")
+    def test_valid_coalition_returns_200(self, mock_build):
+        import networkx as nx
+        G = nx.Graph()
+        G.add_edge("mg-0", "mg-1")
+        G.add_edge("mg-1", "mg-10")
+        mock_build.return_value = (G, -1)
         """Adjacent nodes in the 50-node grid return a 200 with full schema."""
         resp = client.post(
             "/stability/verify",
@@ -404,22 +411,33 @@ class TestStabilityRoute:
         assert "converged" in data
         assert "solve_time_ms" in data
 
-    def test_route_matches_direct_solver_result(self):
+    from unittest.mock import patch
+    @patch("app.routers.stability.build_topology_from_db")
+    def test_route_matches_direct_solver_result(self, mock_build):
+        from app.graph.fixtures import generate_city_grid
+        mock_build.return_value = (generate_city_grid(rows=5, cols=10), -1)
         """Route result must be consistent with a direct verify_stability call."""
         coalition = ["mg-0", "mg-1", "mg-10"]
-        surplus = {"mg-0": 2.0, "mg-1": 2.0, "mg-10": 2.0}
-
+        from app.schemas.stability import SellerProfile, BuyerProfile
+        profiles = {
+            "mg-0": SellerProfile(role="SELLER", generation_cost=1.0, degradation_cost=0.0, opportunity_cost=0.0, outside_option=0.0, available_capacity=10.0),
+            "mg-1": BuyerProfile(role="BUYER", energy_value=5.0, alt_procurement_cost=0.0, outside_option=0.0, demand=5.0),
+            "mg-10": SellerProfile(role="SELLER", generation_cost=1.0, degradation_cost=0.0, opportunity_cost=0.0, outside_option=0.0, available_capacity=5.0),
+        }
+    
         resp = client.post(
             "/stability/verify",
-            json={"coalition": coalition, "surplus_map": surplus},
+            json={"coalition": coalition, "profiles": {k: v.model_dump() for k, v in profiles.items()}},
         )
         assert resp.status_code == 200
         api_data = resp.json()
-
+    
+        from app.stability.value_model import VPPValueModel
         direct = verify_stability(
             coalition=coalition,
             graph=generate_city_grid(rows=5, cols=10),
-            surplus_map=surplus,
+            profiles=profiles,
+            value_model=VPPValueModel()
         )
 
         assert api_data["isStable"] == direct.is_stable

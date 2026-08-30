@@ -13,6 +13,7 @@ Design decisions (recorded in docs/ASSUMPTIONS.md §):
 - The episode ends after MAX_STEPS rounds.
 - MAPPO now chooses genuine negotiation actions (ACCEPT, COUNTER_OFFER, WALK_AWAY, JOIN, LEAVE).
 - Rewards are strictly utility-driven (trade surplus) with no arbitrary bonuses.
+- **Privacy Update (FedMAPPO)**: The `state()` method now masks private cost/surplus curves to ensure the centralized critic is privacy-preserving.
 """
 
 from __future__ import annotations
@@ -26,6 +27,23 @@ from gymnasium import spaces
 from pettingzoo import ParallelEnv
 
 from app.agents.dqn_wrapper import DQNWrapper, NegotiationAction
+from app.oracle.llm_oracle import fetch_weather_and_predict_stress
+from app.rl.forecasting import get_forecast_error
+
+def fedavg_sync(global_weights: dict, local_weights: list[dict]) -> dict:
+    """
+    Federated Averaging (FedAvg) synchronization hook.
+    Averages local actor network weights across the microgrid coalition
+    without sharing private gradients or data.
+    """
+    if not local_weights:
+        return global_weights
+    
+    new_weights = {}
+    for k in global_weights.keys():
+        new_weights[k] = sum(w[k] for w in local_weights) / len(local_weights)
+    return new_weights
+
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -118,6 +136,13 @@ class GridNexusEnv(ParallelEnv):
         return spaces.Box(low=low, high=high, dtype=np.float32)
 
     @functools.lru_cache(maxsize=None)
+    def state_space(self) -> spaces.Box:
+        """Global state space for FedMAPPO Critic (masked for privacy)."""
+        # State dimension: (round_frac, oracle_signal, coalition_size_frac) + n_agents * (action)
+        dim = 3 + self.n_agents
+        return spaces.Box(low=0.0, high=1.0, shape=(dim,), dtype=np.float32)
+
+    @functools.lru_cache(maxsize=None)
     def action_space(self, agent: str) -> spaces.Discrete:
         """Discrete negotiation actions."""
         return spaces.Discrete(ACTION_DIM)
@@ -135,7 +160,12 @@ class GridNexusEnv(ParallelEnv):
 
         self.agents = list(self.possible_agents)
         self._step = 0
-        self._oracle_signal = float(self._rng.uniform(0.2, 0.8))
+        
+        # Real-time RAG Oracle Integration
+        temp = float(self._rng.uniform(15, 35))
+        cloud = float(self._rng.uniform(0, 100))
+        oracle_pred = fetch_weather_and_predict_stress(temp, cloud)
+        self._oracle_signal = float(oracle_pred.get("stress_index", 0.5))
 
         # Re-sample private parameters
         for ag in self.agents:
@@ -272,9 +302,13 @@ class GridNexusEnv(ParallelEnv):
         attempts = max(self._trade_attempts[agent], 1)
         rejection_rate = self._trade_rejections[agent] / attempts
 
+        # Inject forecasting error noise to observed surplus and cost
+        forecast_surplus = get_forecast_error(self._surplus[agent], std_dev=0.05)
+        forecast_cost = get_forecast_error(self._cost[agent], std_dev=0.05)
+
         obs = np.array([
-            self._surplus[agent],                           # [0]
-            self._cost[agent],                              # [1]
+            forecast_surplus,                              # [0]
+            forecast_cost,                                 # [1]
             self._step / self.max_steps,                   # [2]
             self._oracle_signal,                           # [3]
             coalition_size_frac,                           # [4]
@@ -286,6 +320,24 @@ class GridNexusEnv(ParallelEnv):
         ], dtype=np.float32)
 
         return obs
+
+    def state(self) -> np.ndarray:
+        """
+        Global state for FedMAPPO Critic.
+        Strictly masks private parameters (surplus, cost) to guarantee data privacy.
+        """
+        coalition_agents_count = sum(1 for s in self._prev_stances.values() if s in [0, 3])
+        coalition_size_frac = (coalition_agents_count) / max(self.n_agents, 1)
+        
+        global_features = [
+            self._step / self.max_steps,
+            self._oracle_signal,
+            coalition_size_frac
+        ]
+        
+        public_actions = [self._prev_stances.get(ag, 1) / 4.0 for ag in self.possible_agents]
+        
+        return np.array(global_features + public_actions, dtype=np.float32)
 
     def render(self) -> None:
         """No-op renderer; use TensorBoard metrics instead."""

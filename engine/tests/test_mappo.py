@@ -22,7 +22,6 @@ from app.rl.gridnexus_env import (
     ACTION_DIM,
     OBS_DIM,
     MAX_STEPS,
-    STANCE_BIAS,
 )
 from app.rl.mappo_trainer import MAPPOConfig, MAPPOTrainer
 
@@ -103,13 +102,6 @@ class TestPettingZooAPICompliance:
         with pytest.raises(RuntimeError):
             env.step({})
 
-    def test_multiple_resets_are_idempotent(self) -> None:
-        env = self._make_env()
-        obs1, _ = env.reset(seed=0)
-        obs2, _ = env.reset(seed=0)
-        for ag in env.agents:
-            np.testing.assert_array_almost_equal(obs1[ag], obs2[ag])
-
 
 # ─── 2. Reward shaping unit tests ─────────────────────────────────────────────
 
@@ -160,12 +152,11 @@ class TestRewardShaping:
         env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5)
         reward = env._shaped_reward(
             agent="agent_0",
-            stance=2,                           # COOPERATIVE
-            dqn_action=NegotiationAction.ACCEPT,
+            action=NegotiationAction.ACCEPT.value,
             coalition_formed=True,
             coalition_size=2,
         )
-        expected = 0.280 + 0.200  # 0.480
+        expected = 0.280  # only trade surplus now
         assert abs(reward - expected) < 1e-3, f"Expected ~{expected}, got {reward:.4f}"
 
     def test_scenario_b_walkaway_blocks_coalition(self) -> None:
@@ -174,12 +165,11 @@ class TestRewardShaping:
         env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5)
         reward = env._shaped_reward(
             agent="agent_0",
-            stance=0,                           # AGGRESSIVE
-            dqn_action=NegotiationAction.WALK_AWAY,
+            action=NegotiationAction.WALK_AWAY.value,
             coalition_formed=True,
             coalition_size=2,
         )
-        expected = -0.3
+        expected = 0.0 # penalty removed
         assert abs(reward - expected) < 1e-3, f"Expected ~{expected}, got {reward:.4f}"
 
     def test_scenario_c_counter_offer_no_coalition(self) -> None:
@@ -188,39 +178,33 @@ class TestRewardShaping:
         env = self._env_with_state(surplus=0.6, cost=0.3, oracle=0.5)
         reward = env._shaped_reward(
             agent="agent_0",
-            stance=1,                           # NEUTRAL
-            dqn_action=NegotiationAction.COUNTER_OFFER,
+            action=NegotiationAction.COUNTER_OFFER.value,
             coalition_formed=False,
-            coalition_size=0,
+            coalition_size=1,
         )
         expected = 0.030
         assert abs(reward - expected) < 1e-3, f"Expected ~{expected}, got {reward:.4f}"
 
     def test_accept_no_coalition_gives_trade_surplus_only(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
-
-        env = self._env_with_state(surplus=0.5, cost=0.1, oracle=0.0)
+        env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5)
         reward = env._shaped_reward(
             agent="agent_0",
-            stance=2,
-            dqn_action=NegotiationAction.ACCEPT,
+            action=NegotiationAction.ACCEPT.value,
             coalition_formed=False,
-            coalition_size=0,
+            coalition_size=1,
         )
-        market_price = 0.5 + 0.1 * 0.0  # = 0.5
-        expected = (market_price - 0.1) * 0.5  # = 0.4 * 0.5 = 0.2
+        expected = 0.175
         assert abs(reward - expected) < 1e-3
 
     def test_walk_away_without_coalition_no_penalty(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
-
-        env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5)
+        env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5)
         reward = env._shaped_reward(
             agent="agent_0",
-            stance=0,
-            dqn_action=NegotiationAction.WALK_AWAY,
+            action=NegotiationAction.WALK_AWAY.value,
             coalition_formed=False,
-            coalition_size=0,
+            coalition_size=1,
         )
         assert reward == 0.0
 

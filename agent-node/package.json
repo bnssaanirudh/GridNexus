@@ -1,0 +1,13 @@
+{
+  "name": "gridnexus-agent-node",
+  "version": "1.0.0",
+  "description": "Decentralized GridNexus Agent Swarm",
+  "type": "module",
+  "scripts": {
+    "start": "node swarm.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.3",
+    "ollama": "^0.5.0"
+  }
+}

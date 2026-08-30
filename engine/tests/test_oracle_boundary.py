@@ -51,7 +51,7 @@ FORBIDDEN_MODULES = {
 }
 
 # The module under test
-ORACLE_POLICY_PATH = REPO_ROOT / "app" / "oracle" / "oracle_policy.py"
+ORACLE_POLICY_PATH = REPO_ROOT / "app" / "oracle" / "inference.py"
 ANON_STATE_PATH = REPO_ROOT / "app" / "oracle" / "anonymized_state.py"
 
 
@@ -63,19 +63,19 @@ class TestOracleBoundary:
 
     def test_oracle_policy_does_not_import_forbidden_modules(self) -> None:
         """
-        oracle_policy.py must not import from microgrid_agent or secret_field.
+        inference.py must not import from microgrid_agent or secret_field.
 
         These modules carry battery_capacity_kwh and baseline_generation_cost
         — the two fields that the Oracle is forbidden to observe.
         """
         assert ORACLE_POLICY_PATH.exists(), (
-            f"oracle_policy.py not found at {ORACLE_POLICY_PATH}"
+            f"inference.py not found at {ORACLE_POLICY_PATH}"
         )
         imported = _collect_imports(ORACLE_POLICY_PATH)
 
         violations = [m for m in imported if m in FORBIDDEN_MODULES]
         assert not violations, (
-            f"oracle_policy.py imports forbidden module(s): {violations}\n"
+            f"inference.py imports forbidden module(s): {violations}\n"
             "The Oracle must only observe AnonymizedGridState — never "
             "per-agent hidden fields."
         )

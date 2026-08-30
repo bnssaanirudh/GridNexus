@@ -5,47 +5,47 @@
    Light theme throughout with warm stone accents.
    ============================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,700&family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
   /* Brand */
-  --brand-teal:        #00C9A7;
-  --brand-teal-dim:    rgba(0, 201, 167, 0.15);
-  --brand-teal-subtle: rgba(0, 201, 167, 0.08);
-  --brand-navy:        #1A2332;
+  --brand-teal:        #FFFFFF; /* Stripped back, pure white accent */
+  --brand-teal-dim:    rgba(255, 255, 255, 0.15);
+  --brand-teal-subtle: rgba(255, 255, 255, 0.08);
+  --brand-navy:        #080A12;
   --brand-gold:        #C9A55A;
 
-  /* Light Surface Palette */
-  --bg-cream:          #F7F5F0;
-  --bg-white:          #FFFFFF;
-  --bg-warm:           #EDE9E3;
-  --bg-stone:          #D6CFC6;
-  --bg-nav:            #FAFAF8;
+  /* Likova Navy Palette */
+  --bg-cream:          #080A12;
+  --bg-white:          #0C101D;
+  --bg-warm:           #13192B;
+  --bg-stone:          #1A2239;
+  --bg-nav:            #080A12;
 
   /* Dark surfaces (for dashboard panels) */
-  --bg-dark:           #0C0B09;
-  --bg-dark-surface:   #111210;
-  --bg-dark-card:      #181715;
-  --bg-dark-raised:    #201F1C;
+  --bg-dark:           #05060A;
+  --bg-dark-surface:   #0A0D18;
+  --bg-dark-card:      #0C101D;
+  --bg-dark-raised:    #13192B;
 
   /* Borders */
-  --border-light:      rgba(26, 35, 50, 0.08);
-  --border-medium:     rgba(26, 35, 50, 0.14);
-  --border-strong:     rgba(26, 35, 50, 0.22);
-  --border-teal:       rgba(0, 201, 167, 0.3);
-  --border-dark:       rgba(255, 255, 255, 0.08);
+  --border-light:      rgba(255, 255, 255, 0.1);
+  --border-medium:     rgba(255, 255, 255, 0.2);
+  --border-strong:     rgba(255, 255, 255, 0.4);
+  --border-teal:       rgba(255, 255, 255, 0.5);
+  --border-dark:       rgba(0, 0, 0, 0.8);
 
-  /* Typography — Light */
-  --fg-primary:        #0C0B09;
-  --fg-secondary:      #3D3B36;
-  --fg-muted:          #7A7568;
-  --fg-disabled:       #B8B3AB;
+  /* Typography - Likova Dark */
+  --fg-primary:        #FFFFFF;
+  --fg-secondary:      rgba(255, 255, 255, 0.7);
+  --fg-muted:          rgba(255, 255, 255, 0.4);
+  --fg-disabled:       rgba(255, 255, 255, 0.2);
 
-  /* Typography — Dark contexts */
-  --fg-dark-primary:   #F4F2EE;
-  --fg-dark-secondary: #9C9890;
-  --fg-dark-muted:     #5C5950;
+  /* Typography - Light contexts (for inverted blocks) */
+  --fg-dark-primary:   #080A12;
+  --fg-dark-secondary: #2C3549;
+  --fg-dark-muted:     #52607E;
 
   /* Status */
   --status-live:       #00C9A7;
@@ -60,7 +60,7 @@
 
   /* Typography */
   --font-serif:   'Cormorant Garamond', Georgia, serif;
-  --font-sans:    'Inter', system-ui, sans-serif;
+  --font-sans:    'Montserrat', 'Inter', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', 'Menlo', monospace;
 
   /* For backward compat */
@@ -131,11 +131,49 @@ html {
 
 body {
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--fg-primary);
   background: var(--bg-cream);
+  color: var(--fg-primary);
+  line-height: 1.5;
   overflow-x: hidden;
+}
+
+/* Likova Specific Utility Classes */
+.likova-heading {
+  font-family: var(--font-sans);
+  font-weight: 200;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  line-height: 1.2;
+}
+
+.likova-line {
+  height: 1px;
+  background: var(--border-light);
+  width: 100%;
+}
+
+.likova-line-vertical {
+  width: 1px;
+  background: var(--border-light);
+  height: 100%;
+}
+
+.likova-block-white {
+  background: #FFFFFF;
+  color: #080A12;
+}
+
+.likova-block-navy {
+  background: #080A12;
+  color: #FFFFFF;
+}
+
+.likova-huge-number {
+  font-family: var(--font-serif);
+  font-size: clamp(80px, 12vw, 240px);
+  line-height: 0.9;
+  font-weight: 300;
+  letter-spacing: -0.02em;
 }
 
 img { max-width: 100%; display: block; }
@@ -349,6 +387,7 @@ ul, ol { list-style: none; }
   transform-origin: center;
   animation: heroScale 30s ease-in-out infinite alternate;
   z-index: 0;
+  filter: brightness(0.85) contrast(1.05);
 }
 @keyframes heroScale {
   from { transform: scale(1.0); }
@@ -361,7 +400,7 @@ ul, ol { list-style: none; }
     to top,
     rgba(12, 11, 9, 0.95) 0%,
     rgba(12, 11, 9, 0.65) 40%,
-    rgba(12, 11, 9, 0.25) 100%
+    rgba(12, 11, 9, 0.45) 100%
   );
   z-index: 1;
 }
@@ -372,6 +411,7 @@ ul, ol { list-style: none; }
   max-width: var(--section-max);
   margin: 0 auto;
   width: 100%;
+  text-align: left;
 }
 .hero-eyebrow {
   display: flex;
@@ -391,25 +431,27 @@ ul, ol { list-style: none; }
 }
 .hero-title {
   font-family: var(--font-serif);
-  font-size: clamp(64px, 9vw, 140px);
+  font-size: clamp(48px, 7vw, 100px);
   font-weight: 300;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   color: #fff;
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
   max-width: 900px;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.8);
 }
 .hero-title-accent {
   font-style: italic;
   color: var(--brand-teal);
 }
 .hero-subtitle {
-  font-size: 17px;
-  line-height: 1.7;
-  color: rgba(255,255,255,0.72);
-  max-width: 520px;
-  margin-bottom: var(--space-8);
-  font-weight: 300;
+  font-size: clamp(16px, 2vw, 22px);
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+  max-width: 640px;
+  margin-bottom: var(--space-10);
+  font-weight: 400;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
 }
 .hero-actions {
   display: flex;
@@ -958,13 +1000,33 @@ ul, ol { list-style: none; }
 }
 .auth-note a { color: var(--brand-teal); font-weight: 500; }
 
-/* ─── Dashboard Shell ────────────────────────────────────────────────────── */
+/* ─── Dashboard Shell ──────────────────────────────────────────────────────/*  Dashboard Shell (Dark Green Theme)  */
 .app-shell {
+  --bg-cream: #091712;       
+  --bg-white: #0E221B;       
+  --bg-card:  #112921;
+  --bg-card-hover: #153328;
+  
+  --fg-primary: #FFFFFF;
+  --fg-secondary: rgba(255, 255, 255, 0.85);
+  --fg-muted: rgba(255, 255, 255, 0.6);
+  --fg-disabled: rgba(255, 255, 255, 0.4);
+  
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --border-strong: rgba(255, 255, 255, 0.25);
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  --brand-teal: #00E6C0;
+  
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
   background: var(--bg-cream);
+  color: var(--fg-primary);
 }
 
 .simulation-banner {
@@ -1470,3 +1532,21 @@ ul, ol { list-style: none; }
 .justify-between { justify-content: space-between; }
 .gap-4       { gap: var(--space-4); }
 .hidden      { display: none; }
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+

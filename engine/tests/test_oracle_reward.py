@@ -34,7 +34,7 @@ from app.oracle.oracle_reward import (
     compute_stability_penalty,
     simulate_state_transition,
 )
-from app.oracle.oracle_trainer import (
+from app.oracle.training import (
     EpisodeMetrics,
     OracleTrainerConfig,
     save_training_artifacts,

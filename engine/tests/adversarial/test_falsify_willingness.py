@@ -42,7 +42,7 @@ def test_falsify_willingness_flagged_unstable():
     # But the FalsifyingAgent demands a massive share based on its lies
     inflated_demand = 100.0 
     
-    def fake_char_fn(coalition, surplus_map, perms):
+    def fake_char_fn(*args, **kwargs):
         # We patch the char_fn builder to reflect that the total real surplus v(S)
         # is bounded, but the adversary demands its inflated falsified utility.
         return {

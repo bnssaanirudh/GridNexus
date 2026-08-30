@@ -25,10 +25,11 @@ def test_defect_after_pool_flagged_unstable():
     G = nx.Graph()
     G.add_edges_from([("defector", "peer_A"), ("defector", "peer_B")])
     
-    def char_fn_with_profitable_defection(coalition, surplus_map, perms):
+    def char_fn_with_profitable_defection(*args, **kwargs):
         # Grand coalition (defector, peer_A, peer_B) generates 100
         # But the defector and peer_A can deviate and generate 120 together
         mapping = {}
+        perms = args[2]
         for p in perms:
             if p == frozenset(["defector", "peer_A"]):
                 mapping[p] = 120.0

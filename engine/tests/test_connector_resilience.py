@@ -61,11 +61,14 @@ class ChaoticConnector(BaseConnector):
         self.fail_for: int = 0  # how many calls to fail
         self.recovery_doc: str = "After storm, sunshine returns."
 
-    def fetch_signals(self, **kwargs) -> list[RawDocument]:  # type: ignore[override]
+    def fetch(self, **kwargs) -> list[RawDocument]:  # type: ignore[override]
         self._calls += 1
         if self._calls <= self.fail_for:
             raise ConnectionError(f"HTTP 500 – call #{self._calls}")
         return _make_docs(self.recovery_doc)
+
+    def validate(self, docs) -> bool:
+        return True
 
 
 def test_t1_circuit_breaker_trips_on_sustained_failures():
@@ -79,7 +82,7 @@ def test_t1_circuit_breaker_trips_on_sustained_failures():
 
     # 5 failures → circuit should be OPEN after the 5th
     for i in range(5):
-        result = rc.fetch_signals()
+        result = rc.fetch()
         assert result.stale is True, f"Should serve stale after failure {i + 1}"
 
     assert rc._cb.state == CircuitState.OPEN, "Circuit should be OPEN after 5 consecutive failures"
@@ -111,7 +114,7 @@ def test_t1_stale_cache_served_during_outage():
     rc._cb._state = CircuitState.OPEN
     rc._cb._opened_at = time.monotonic()
 
-    result = rc.fetch_signals()
+    result = rc.fetch()
     assert result.stale is True
     assert result.documents[0].content == "last good data"
 
@@ -129,7 +132,7 @@ def test_t1_auto_recovery_after_cooldown():
 
     # Trip the circuit
     for _ in range(5):
-        rc.fetch_signals()  # each fails and returns stale
+        rc.fetch()  # each fails and returns stale
 
     assert cb.state == CircuitState.OPEN
 
@@ -138,7 +141,7 @@ def test_t1_auto_recovery_after_cooldown():
     assert cb.state == CircuitState.HALF_OPEN
 
     # The 6th call onwards succeeds → circuit CLOSES
-    result = rc.fetch_signals()
+    result = rc.fetch()
     assert result.stale is False
     assert connector.recovery_doc in result.documents[0].content
     assert cb.state == CircuitState.CLOSED
@@ -195,7 +198,7 @@ def test_t2_rate_limiter_rejects_via_resilient_connector():
     rc._last_good_cache = CachedSignal(documents=_make_docs("cached"), stale=False)
 
     with pytest.raises(RuntimeError, match="Rate limit exceeded"):
-        rc.fetch_signals()
+        rc.fetch()
 
 
 # ─── T3: Staleness propagation in Oracle ──────────────────────────────────────

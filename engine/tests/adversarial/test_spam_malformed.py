@@ -35,7 +35,7 @@ def test_spam_malformed_triggers_bounded_fallback():
     def mock_spam_llm(prompt: str) -> str:
         return "HAHAHA INVALID JSON SPAM!"
         
-    offer, fallback_action, fallback_used = negotiate_with_retry(
+    offer, fallback_action, fallback_used, best_q, llm_q = negotiate_with_retry(
         llm_call=mock_spam_llm,
         prompt="Please propose an offer.",
         agent_id="spammer_1",

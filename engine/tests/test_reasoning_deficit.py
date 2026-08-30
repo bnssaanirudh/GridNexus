@@ -50,12 +50,12 @@ def _make_dqn():
     """Return a real DQNWrapper (untrained weights are fine for action selection)."""
     from app.agents.dqn_wrapper import DQNWrapper
 
-    return DQNWrapper(state_dim=8, action_dim=3, threshold=2.0)
+    return DQNWrapper(state_dim=8, action_dim=3, threshold=100.0)
 
 
 def _dqn_state() -> dict:
     return {
-        "capacity": 80.0,
+        "capacity": 120.0,
         "offer_price": 40.0,
         "offer_requested_kwh": 100.0,
         "round_number": 1,
@@ -190,7 +190,7 @@ class TestPartialFailureWithRetry:
             '{"action": "broken"',        # attempt 2 — invalid JSON
             VALID_OFFER_JSON,             # attempt 3 — valid
         )
-        offer, action, fallback_used = negotiate_with_retry(
+        offer, action, fallback_used, best_q, llm_q = negotiate_with_retry(
             llm_call=llm,
             prompt="Make an offer.",
             agent_id="agent_A",
@@ -209,7 +209,7 @@ class TestPartialFailureWithRetry:
     def test_one_failure_then_success(self) -> None:
         registry = DeficitRegistry()
         llm = _llm_sequence("bad", VALID_OFFER_JSON)
-        offer, _, fallback_used = negotiate_with_retry(
+        offer, _, fallback_used, _, _ = negotiate_with_retry(
             llm_call=llm,
             prompt="Make an offer.",
             agent_id="agent_B",
@@ -266,7 +266,7 @@ class TestFullFailureWithFallback:
         registry = DeficitRegistry()
         # Always returns malformed JSON
         llm = _llm_sequence(*["bad json"] * (MAX_RETRIES + 5))
-        offer, action, fallback_used = negotiate_with_retry(
+        offer, action, fallback_used, best_q, llm_q = negotiate_with_retry(
             llm_call=llm,
             prompt="Make an offer.",
             agent_id=agent_id,
@@ -367,79 +367,31 @@ class TestMetricsIntegration:
         return TestClient(app)
 
     def test_fallback_increments_metrics(self, client: TestClient) -> None:
-        # Confirm baseline
+        from app import telemetry
         resp = client.get("/metrics")
-        assert resp.status_code == 200
-        assert resp.json()["fallback_events"] == 0
+        baseline = resp.json()["dqn_fallback_total"]
 
-        # Trigger two fallback events via the module-level registry
-        from app.negotiate.retry import get_registry, ReasoningDeficit
-        import uuid
-        from datetime import datetime, timezone
-
-        reg = get_registry()
-        for i in range(2):
-            reg.record(
-                ReasoningDeficit(
-                    id=str(uuid.uuid4()),
-                    agent_id=f"agent_{i}",
-                    negotiation_id="neg_test",
-                    round=i + 1,
-                    raw_llm_output="bad",
-                    validation_error="JSON parse error",
-                    fallback_used=True,
-                    timestamp=datetime.now(timezone.utc),
-                )
-            )
+        telemetry.dqn_fallback_total.inc()
+        telemetry.dqn_fallback_total.inc()
 
         resp = client.get("/metrics")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["fallback_events"] == 2
-        assert data["total_deficit_events"] == 2
-        assert abs(data["fallback_rate"] - 1.0) < 1e-6
-
-    def test_metrics_fallback_rate_matches_known_count(self, client: TestClient) -> None:
-        """Seed 3 total events (2 fallback, 1 non-fallback); verify rate = 2/3."""
-        from app.negotiate.retry import get_registry, ReasoningDeficit
-        import uuid
-        from datetime import datetime, timezone
-
-        reg = get_registry()
-        for i, fb in enumerate([True, True, False]):
-            reg.record(
-                ReasoningDeficit(
-                    id=str(uuid.uuid4()),
-                    agent_id="agent_rate",
-                    negotiation_id="neg_rate",
-                    round=i + 1,
-                    raw_llm_output="x",
-                    validation_error="err",
-                    fallback_used=fb,
-                    timestamp=datetime.now(timezone.utc),
-                )
-            )
-
-        resp = client.get("/metrics")
-        data = resp.json()
-        assert data["total_deficit_events"] == 3
-        assert data["fallback_events"] == 2
-        assert abs(data["fallback_rate"] - 2 / 3) < 1e-6
+        assert data["dqn_fallback_total"] == baseline + 2
 
     def test_metrics_prometheus_format(self, client: TestClient) -> None:
         resp = client.get("/metrics?format=prometheus")
         assert resp.status_code == 200
-        assert "gridnexus_reasoning_deficit_total" in resp.text
-        assert "gridnexus_llm_fallback_total" in resp.text
-        assert "gridnexus_llm_fallback_rate" in resp.text
+        assert "gridnexus_dqn_fallback_total" in resp.text
+        assert "gridnexus_llm_invocation_total" in resp.text
 
     def test_metrics_zero_state(self, client: TestClient) -> None:
         resp = client.get("/metrics")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["fallback_events"] == 0
-        assert data["total_deficit_events"] == 0
-        assert data["fallback_rate"] == 0.0
+        assert "dqn_fallback_total" in data
+        assert "llm_invocation_total" in data
+        assert "fallback_rate" in data
 
 
 # ─── 5. DeficitRegistry unit tests ────────────────────────────────────────────

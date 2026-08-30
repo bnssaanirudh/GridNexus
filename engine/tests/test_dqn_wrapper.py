@@ -55,7 +55,7 @@ def test_scripted_adversarial_override():
     # Simulate LLM hallucinating WALK_AWAY
     llm_action = NegotiationAction.WALK_AWAY
     
-    final_action, overridden = wrapper.gate_llm_action(state_dict, llm_action)
+    final_action, overridden, best_q, llm_q = wrapper.gate_llm_action(state_dict, llm_action)
     
     assert overridden is True
     assert final_action == NegotiationAction.ACCEPT

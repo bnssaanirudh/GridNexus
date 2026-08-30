@@ -95,9 +95,13 @@ export default function OverviewPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">Overview</h1>
-        <div className="page-subtitle">Live platform metrics and system status</div>
+      <div style={{ position: "relative", marginBottom: "var(--space-8)", borderRadius: "var(--radius-lg)", overflow: "hidden", boxShadow: "var(--shadow-card)", display: "flex", alignItems: "center", minHeight: "160px", padding: "var(--space-6) var(--space-8)" }}>
+        <img src="/assets/pexels-kindelmedia-9875676.jpg" alt="Dashboard Banner" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, #091712 0%, rgba(9, 23, 18, 0.7) 40%, rgba(9, 23, 18, 0) 100%)", zIndex: 1 }} />
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <h1 className="page-title" style={{ fontSize: "36px", marginBottom: "4px" }}>System Overview</h1>
+          <div className="page-subtitle" style={{ fontSize: "16px", color: "var(--fg-secondary)" }}>Live platform metrics and real-time swarm intelligence status</div>
+        </div>
       </div>
 
       {/* Health row */}
@@ -152,40 +156,46 @@ export default function OverviewPage() {
       {/* Quick actions */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "var(--space-4)", marginTop: "var(--space-6)" }}>
         {[
-          { icon: "⇄", title: "Negotiations", desc: "View active and recent negotiations", path: "/dashboard/negotiations" },
-          { icon: "⟁", title: "Grid Topology", desc: "Inspect network and line utilization", path: "/dashboard/grid" },
-          { icon: "⌁", title: "Audit Chain", desc: "Verify cryptographic event chain", path: "/dashboard/audit" },
-          { icon: "◉", title: "Oracle", desc: "Current signal and RAG provenance", path: "/dashboard/oracle" },
+          { icon: "⇄", title: "Negotiations", desc: "View active and recent negotiations", path: "/dashboard/negotiations", img: "/assets/pexels-china-yu-200611083-35454188.jpg" },
+          { icon: "⟁", title: "Grid Topology", desc: "Inspect network and line utilization", path: "/dashboard/grid", img: "/assets/pexels-mohamed-b-2151113020-33661084.jpg" },
+          { icon: "⌁", title: "Audit Chain", desc: "Verify cryptographic event chain", path: "/dashboard/audit", img: "/assets/pexels-oguzcobn-37824217.jpg" },
+          { icon: "◉", title: "Oracle", desc: "Current signal and RAG provenance", path: "/dashboard/oracle", img: "/assets/pexels-kindelmedia-9800005.jpg" },
         ].map(item => (
           <button
             key={item.path}
-            className="card"
             onClick={() => navigate(item.path)}
             style={{
-              padding: "var(--space-5)",
+              padding: 0,
               textAlign: "left",
               cursor: "pointer",
               background: "var(--bg-card)",
               border: "1px solid var(--border-dim)",
+              borderRadius: "var(--radius-lg)",
               display: "flex",
               flexDirection: "column",
-              gap: "var(--space-2)",
               position: "relative",
-              transition: "background 0.2s ease, border-color 0.2s ease",
+              overflow: "hidden",
+              transition: "transform 0.3s ease, box-shadow 0.3s ease",
+              boxShadow: "var(--shadow-sm)"
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)";
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--border-subtle)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)";
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = "var(--bg-card)";
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-sm)";
             }}
           >
-            <div style={{ position: "absolute", top: 0, left: 0, width: "6px", height: "6px", background: "var(--brand-blue)", opacity: 0.5 }} />
-            <div style={{ fontSize: "20px", marginBottom: "var(--space-2)" }} aria-hidden="true">{item.icon}</div>
-            <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--fg-primary)" }}>{item.title}</div>
-            <div style={{ fontSize: "12px", color: "var(--fg-secondary)" }}>{item.desc}</div>
+            <div style={{ width: "100%", height: "100px", position: "relative" }}>
+              <img src={item.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(17,41,33,0) 0%, #112921 100%)" }} />
+            </div>
+            <div style={{ padding: "0 var(--space-5) var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+              <div style={{ fontSize: "20px", marginBottom: "var(--space-1)" }} aria-hidden="true">{item.icon}</div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--fg-primary)" }}>{item.title}</div>
+              <div style={{ fontSize: "13px", color: "var(--fg-secondary)" }}>{item.desc}</div>
+            </div>
           </button>
         ))}
       </div>

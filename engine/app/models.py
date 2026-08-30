@@ -45,7 +45,12 @@ class DER(Base):
     minPowerKw = Column(Numeric(10, 4), nullable=False)
     maxPowerKw = Column(Numeric(10, 4), nullable=False)
     efficiency = Column(Numeric(5, 4), nullable=False)
-    metadata = Column(JSON, nullable=True)
+    currentSoC = Column(Numeric(5, 4), nullable=True) # State of Charge [0, 1]
+    maxChargeRateKw = Column(Numeric(10, 4), nullable=True)
+    maxDischargeRateKw = Column(Numeric(10, 4), nullable=True)
+    cyclicDegradationCost = Column(Numeric(10, 4), nullable=True) # Cost per kWh of cycle
+
+    device_metadata = Column(JSON, nullable=True)
     createdAt = Column(DateTime(timezone=True), server_default=func.now())
     updatedAt = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -3,103 +3,66 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding canonical physical network topology...");
+  console.log("Seeding canonical physical network topology with 1000 Agents...");
 
   // 1. Create Topology Revision
   const revision = await prisma.topologyRevision.create({
-    data: { notes: "Initial Bootstrap Topology" },
+    data: { notes: "1000 Agent Swarm Topology" },
   });
   console.log(`Created TopologyRevision: v${revision.version}`);
 
-  // 2. Create Buses
-  const busA = await prisma.bus.create({
-    data: { externalCode: "BUS-A", voltageLevelKv: 12.4, latitude: 37.7749, longitude: -122.4194 },
-  });
-  const busB = await prisma.bus.create({
-    data: { externalCode: "BUS-B", voltageLevelKv: 12.4, latitude: 37.7849, longitude: -122.4094 },
-  });
-  const busC = await prisma.bus.create({
-    data: { externalCode: "BUS-C", voltageLevelKv: 12.4, latitude: 37.7649, longitude: -122.4294 },
+  // 2. Create a central distribution Bus
+  const centralBus = await prisma.bus.create({
+    data: { externalCode: "BUS-CENTRAL", voltageLevelKv: 12.4, latitude: 37.7749, longitude: -122.4194 },
   });
 
-  // 3. Create Lines (Edges)
-  await prisma.line.create({
-    data: {
-      fromBusId: busA.id,
-      toBusId: busB.id,
-      resistance: 0.05,
-      reactance: 0.1,
-      thermalLimitKw: 2000,
-    },
-  });
-  await prisma.line.create({
-    data: {
-      fromBusId: busB.id,
-      toBusId: busC.id,
-      resistance: 0.04,
-      reactance: 0.08,
-      thermalLimitKw: 1500,
-    },
-  });
-  await prisma.line.create({
-    data: {
-      fromBusId: busC.id,
-      toBusId: busA.id,
-      resistance: 0.06,
-      reactance: 0.12,
-      thermalLimitKw: 1800,
-    },
-  });
+  // 3. Create 1000 Microgrids
+  console.log("Generating 1000 microgrids...");
+  const NUM_AGENTS = 1000;
+  
+  // We'll create them sequentially to avoid overwhelming the connection pool
+  for (let i = 0; i < NUM_AGENTS; i++) {
+    const isSolar = i % 2 === 0;
+    await prisma.microgrid.create({
+      data: {
+        name: `Agent Microgrid ${i}`,
+        type: isSolar ? "solar" : "wind",
+        externalCode: `MG-${i}`,
+        latitude: 37.7749 + (Math.random() - 0.5) * 0.1,
+        longitude: -122.4194 + (Math.random() - 0.5) * 0.1,
+        hiddenbatterycapacity: "enc_0",
+        hiddengenerationcost: "enc_1",
+        ders: {
+          create: [
+            { 
+              type: isSolar ? "SOLAR" : "WIND", 
+              ratedPowerKw: 100 + Math.random() * 400, 
+              minPowerKw: 0, 
+              maxPowerKw: 500, 
+              efficiency: 0.95 
+            },
+          ],
+        },
+        busMappings: {
+          create: [{ busId: centralBus.id, phase: ["A", "B", "C"][i % 3] }],
+        },
+        agents: {
+          // Explicitly giving them IDs like agent_0 for easier matching
+          create: [{ 
+            id: `agent_${i}`,
+            type: "Qwen-LLM", 
+            qre_lambda: 0.5 
+          }],
+        },
+      },
+    });
+    
+    if ((i + 1) % 100 === 0) {
+      console.log(`...Created ${i + 1} / ${NUM_AGENTS} agents`);
+    }
+  }
 
-  // 4. Create Microgrids
-  const mg1 = await prisma.microgrid.create({
-    data: {
-      name: "Solar Array Alpha",
-      type: "solar",
-      externalCode: "MG-ALPHA",
-      latitude: 37.7749,
-      longitude: -122.4194,
-      hiddenbatterycapacity: "enc_0",
-      hiddengenerationcost: "enc_1",
-      ders: {
-        create: [
-          { type: "SOLAR", ratedPowerKw: 500, minPowerKw: 0, maxPowerKw: 500, efficiency: 0.98 },
-        ],
-      },
-      busMappings: {
-        create: [{ busId: busA.id, phase: "A" }],
-      },
-      agents: {
-        create: [{ type: "Q-Learning", qre_lambda: 0.5 }],
-      },
-    },
-  });
-
-  const mg2 = await prisma.microgrid.create({
-    data: {
-      name: "Wind Farm Beta",
-      type: "wind",
-      externalCode: "MG-BETA",
-      latitude: 37.7849,
-      longitude: -122.4094,
-      hiddenbatterycapacity: "enc_0",
-      hiddengenerationcost: "enc_2",
-      ders: {
-        create: [
-          { type: "WIND", ratedPowerKw: 350, minPowerKw: 0, maxPowerKw: 350, efficiency: 0.95 },
-        ],
-      },
-      busMappings: {
-        create: [{ busId: busB.id, phase: "B" }],
-      },
-      agents: {
-        create: [{ type: "PPO", qre_lambda: 0.8 }],
-      },
-    },
-  });
-
-  console.log(`Seeded microgrids: ${mg1.id}, ${mg2.id}`);
-  console.log("Database seeded successfully.");
+  console.log("Database seeded successfully with 1000 agents.");
 }
 
 main()

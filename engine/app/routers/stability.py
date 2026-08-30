@@ -162,7 +162,7 @@ async def stability_verify(
     )
 
     return StabilityVerifyResponse(
-        isCoreStable=result.is_stable,
+        isStable=result.is_stable,
         epsilonStar=result.epsilon_star,
         allocation=allocation,
         outside_options=result.outside_options,

@@ -1,17 +1,8 @@
-/**
- * command-center/src/pages/LandingPage.tsx
- * ─────────────────────────────────────────
- * GridNexus public landing page.
- * Design inspired by Kononenko Architectural Bureau:
- * editorial serif typography, full-bleed photography,
- * dramatic scale contrast, generous white space.
- */
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-/* ── Animated counter hook ──────────────────────────────────────────────── */
-function useCountUp(target: number, duration = 2000, suffix = "") {
+/* ── Hooks ────────────────────────────────────────────────────────────── */
+function useCountUp(target: number, duration = 2500, suffix = "", prefix = "") {
   const [value, setValue] = useState(0);
   const started = useRef(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -32,635 +23,356 @@ function useCountUp(target: number, duration = 2000, suffix = "") {
         };
         requestAnimationFrame(tick);
       }
-    }, { threshold: 0.5 });
+    }, { threshold: 0.1 });
     observer.observe(el);
     return () => observer.disconnect();
   }, [target, duration]);
 
-  return { ref, display: `${value}${suffix}` };
+  return { ref, display: `${prefix}${value}${suffix}` };
 }
 
-/* ── Scroll reveal hook ─────────────────────────────────────────────────── */
+function useParallax() {
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY;
+      document.querySelectorAll(".parallax-bg").forEach((el) => {
+        const speed = (el as HTMLElement).dataset.speed || "0.5";
+        const yPos = -(scrolled * parseFloat(speed));
+        (el as HTMLElement).style.transform = `translateY(${yPos}px)`;
+      });
+      document.querySelectorAll(".parallax-el").forEach((el) => {
+        const speed = (el as HTMLElement).dataset.speed || "0.2";
+        const yPos = -(scrolled * parseFloat(speed));
+        (el as HTMLElement).style.transform = `translateY(${yPos}px)`;
+      });
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+}
+
 function useScrollReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll(".reveal");
     const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("visible"); });
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) e.target.classList.add("visible");
+        });
       },
-      { threshold: 0.08 }
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
     );
-    els.forEach(el => observer.observe(el));
+    document.querySelectorAll(".reveal, .reveal-up, .reveal-left, .reveal-right").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
 }
 
-/* ── Ticker items ───────────────────────────────────────────────────────── */
+/* ── Data ───────────────────────────────────────────────────────────────── */
 const TICKER = [
-  "P2P Energy Trading", "Game-Theoretic Coalition Formation", "DQN Safety Guard",
-  "LinDistFlow Power Verification", "LLM-Negotiated Contracts", "Cryptographic Audit Chain",
-  "IEEE 33-Bus & 69-Bus Support", "MAPPO Oracle Inference", "Bayesian Belief Updates",
-  "VPP Coordination", "Settlement Idempotency", "Least-Core Stability",
-  "P2P Energy Trading", "Game-Theoretic Coalition Formation", "DQN Safety Guard",
-  "LinDistFlow Power Verification", "LLM-Negotiated Contracts", "Cryptographic Audit Chain",
+  "P2P ENERGY TRADING", "GAME-THEORETIC COALITION FORMATION", "DQN SAFETY GUARD",
+  "LINDISTFLOW POWER VERIFICATION", "LLM-NEGOTIATED CONTRACTS", "CRYPTOGRAPHIC AUDIT CHAIN",
+  "IEEE 33-BUS & 69-BUS SUPPORT", "MAPPO ORACLE INFERENCE", "BAYESIAN BELIEF UPDATES",
 ];
 
-/* ── Features data ──────────────────────────────────────────────────────── */
 const FEATURES = [
-  {
-    num: "01",
-    icon: "⚡",
-    title: "P2P Energy Negotiation",
-    desc: "LLM-driven bilateral bargaining with Rubinstein alternating-offers, DQN safety override, and schema validation on every round.",
-  },
-  {
-    num: "02",
-    icon: "🔮",
-    title: "Oracle Intelligence",
-    desc: "REINFORCE-trained Oracle broadcasts market signals. RAG pipeline enriches context with verified external weather and grid data.",
-  },
-  {
-    num: "03",
-    icon: "🏛",
-    title: "Coalition Stability",
-    desc: "Network-aware VPP coalition value model with market revenue, congestion cost, battery degradation, and least-core epsilon bounds.",
-  },
-  {
-    num: "04",
-    icon: "⚙",
-    title: "Grid Physics Certification",
-    desc: "LinDistFlow power flow solver produces signed feasibility certificates. No settlement commits without passing grid verification.",
-  },
-  {
-    num: "05",
-    icon: "🔐",
-    title: "Cryptographic Audit Chain",
-    desc: "Every negotiation event appends to an immutable SHA-256 hash chain. Append-only DB trigger prevents deletion or mutation.",
-  },
-  {
-    num: "06",
-    icon: "📊",
-    title: "Research Benchmark Suite",
-    desc: "10 baselines, 10 scenarios, IEEE 33/69-bus configs, 5–250 DER scaling. Generates publication-grade plots and LaTeX tables.",
-  },
+  { num: "01", title: "P2P NEGOTIATION", desc: "LLM-driven bilateral bargaining with Rubinstein alternating-offers, DQN safety override, and strict schema validation on every interaction round.", img: "/assets/pexels-china-yu-200611083-35454188.jpg" },
+  { num: "02", title: "ORACLE INTELLIGENCE", desc: "REINFORCE-trained Oracle broadcasts market signals. RAG pipeline enriches context with verified external weather, pricing, and topology data.", img: "/assets/pexels-kindelmedia-9800005.jpg" },
+  { num: "03", title: "PHYSICS CERTIFICATION", desc: "LinDistFlow power flow solver produces cryptographically signed feasibility certificates. No settlement commits without passing grid verification.", img: "/assets/pexels-kindelmedia-9875676.jpg" },
 ];
 
-/* ── Pipeline stages ────────────────────────────────────────────────────── */
-const PIPELINE = [
-  { num: "01", stage: "Oracle Signal",    desc: "Market intelligence via RAG + REINFORCE policy" },
-  { num: "02", stage: "LLM Negotiation",  desc: "Privacy-preserving Rubinstein bilateral bargaining" },
-  { num: "03", stage: "DQN Safety Gate",  desc: "Trained action-value guard prevents unsafe commits" },
-  { num: "04", stage: "Grid Certification", desc: "LinDistFlow power flow with signed certificate" },
-  { num: "05", stage: "Atomic Settlement", desc: "Idempotent commit with SHA-256 audit chain" },
-];
-
-/* ── StatCounter ────────────────────────────────────────────────────────── */
-function StatCounter({ value, suffix, label }: { value: number; suffix: string; label: string }) {
-  const { ref, display } = useCountUp(value, 2000, suffix);
-  return (
-    <div className="hero-stat" ref={ref as any}>
-      <span className="hero-stat-value">{display}</span>
-      <span className="hero-stat-label">{label}</span>
-    </div>
-  );
-}
-
-/* ── Terminal Line ──────────────────────────────────────────────────────── */
-function TerminalLine({ prefix, text, color = "rgba(244,242,238,0.55)", delay = false }: {
-  prefix: string; text: string; color?: string; delay?: boolean;
-}) {
-  const [visible, setVisible] = useState(!delay);
-  useEffect(() => {
-    if (delay) {
-      const t = setTimeout(() => setVisible(true), 900);
-      return () => clearTimeout(t);
-    }
-  }, [delay]);
-  if (!visible) return null;
-  return (
-    <div style={{ display: "flex", gap: "12px", lineHeight: "1.9" }}>
-      <span style={{ color: "rgba(244,242,238,0.3)", minWidth: "40px", flexShrink: 0 }}>[{prefix}]</span>
-      <span style={{ color }}>{text}</span>
-    </div>
-  );
-}
-
-/* ── Main Landing Page ──────────────────────────────────────────────────── */
+/* ── Components ─────────────────────────────────────────────────────────── */
 export default function LandingPage() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  
   useScrollReveal();
+  useParallax();
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 60);
+    const handler = () => setScrolled(window.scrollY > 80);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  const agentsCount = useCountUp(1000, 2500, "+");
+  const latencyCount = useCountUp(12, 2500, "ms");
+  const certCount = useCountUp(100, 2500, "%");
+
   return (
-    <div style={{ background: "var(--bg-cream)", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
+    <div style={{ background: "var(--bg-cream)", minHeight: "100vh", position: "relative", overflowX: "hidden", color: "var(--fg-primary)" }}>
+      
+      {/* ── Custom Styles for Likova Animations ── */}
+      <style>{`
+        .reveal, .reveal-up, .reveal-left, .reveal-right {
+          opacity: 0;
+          transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-up { transform: translateY(60px); }
+        .reveal-left { transform: translateX(-60px); }
+        .reveal-right { transform: translateX(60px); }
+        .visible { opacity: 1; transform: translate(0) !important; }
+        
+        .img-mask {
+          overflow: hidden;
+          position: relative;
+        }
+        .img-mask img, .img-mask video {
+          transition: transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .img-mask:hover img, .img-mask:hover video {
+          transform: scale(1.05);
+        }
+
+        .outline-text {
+          -webkit-text-stroke: 1px rgba(255,255,255,0.2);
+          color: transparent;
+        }
+        
+        .likova-btn {
+          position: relative;
+          overflow: hidden;
+          transition: color 0.4s;
+        }
+        .likova-btn::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; width: 100%; height: 100%;
+          background: var(--fg-primary);
+          transform: scaleX(0);
+          transform-origin: right;
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          z-index: -1;
+        }
+        .likova-btn:hover { color: var(--bg-cream); }
+        .likova-btn:hover::before { transform: scaleX(1); transform-origin: left; }
+      `}</style>
 
       {/* ── Top Nav ──────────────────────────────────────────────────── */}
-      <nav className={`landing-nav${scrolled ? " scrolled" : ""}`} role="navigation">
-        <a href="/" className="nav-logo" aria-label="GridNexus Home">
-          <div className="nav-logo-mark" aria-hidden="true" />
-          <span className="nav-logo-text" style={{ color: scrolled ? undefined : "#fff" }}>GridNexus</span>
-        </a>
-
-        <ul className="nav-links" aria-label="Navigation">
-          {["Platform", "Features", "Research", "Audit"].map(item => (
-            <li key={item}>
-              <a
-                href={`#${item.toLowerCase()}`}
-                className={`nav-link${scrolled ? "" : " light"}`}
-              >
-                {item}
-              </a>
-            </li>
+      <nav className={`landing-nav${scrolled ? " scrolled" : ""}`} style={{ 
+        background: scrolled ? "var(--bg-cream)" : "transparent", 
+        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.1)" : "none",
+        transition: "all 0.4s ease"
+      }}>
+        <div className="likova-heading" style={{ fontSize: "24px", color: "var(--fg-primary)", cursor: "pointer", letterSpacing: "0.2em" }}>
+          GRIDNEXUS
+        </div>
+        <ul className="nav-links likova-heading" style={{ fontSize: "11px", gap: "3vw" }}>
+          {["PLATFORM", "FEATURES", "RESEARCH", "AUDIT"].map(item => (
+            <li key={item} style={{ cursor: "pointer", color: "var(--fg-secondary)" }}>{item}</li>
           ))}
         </ul>
-
-        <div className="nav-cta">
-          <button
-            className={`btn btn-sm${scrolled ? " btn-outline" : " btn-outline-white"}`}
-            onClick={() => navigate("/login")}
-          >
-            Sign In
+        <div style={{ display: "flex", gap: "var(--space-4)" }}>
+          <button className="likova-heading likova-btn" style={{ fontSize: "11px", background: "transparent", border: "1px solid var(--border-medium)", color: "var(--fg-primary)", padding: "10px 24px", cursor: "pointer", letterSpacing: "0.15em" }} onClick={() => navigate("/login")}>
+            SIGN IN
           </button>
-          <button
-            className="btn btn-teal btn-sm"
-            onClick={() => navigate("/login")}
-          >
-            Get Started
+          <button className="likova-heading" style={{ fontSize: "11px", background: "var(--fg-primary)", border: "none", color: "var(--bg-cream)", padding: "11px 24px", cursor: "pointer", letterSpacing: "0.15em" }} onClick={() => navigate("/dashboard")}>
+            COMMAND CENTER
           </button>
         </div>
       </nav>
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="hero" id="hero" aria-label="Hero">
-        <video
-          className="hero-bg-video"
-          src="/videos/hero_video.mp4"
-          poster="/hero_solar_city.jpg"
-          autoPlay loop muted playsInline
-          aria-label="Aerial view of smart city with solar panels and electric grid"
-        />
-        <div className="hero-overlay" />
-
-        {/* Particles */}
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="particle"
-            aria-hidden="true"
-            style={{
-              left: `${8 + i * 15}%`,
-              top: `${25 + (i % 3) * 18}%`,
-              animationDuration: `${5 + i * 0.8}s`,
-              animationDelay: `${i * 0.6}s`,
-            }}
-          />
-        ))}
-
-        <div className="hero-content">
-          <div className="hero-eyebrow">
-            <span className="hero-eyebrow-dot" />
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--brand-teal)" }}>
-              Energy 5.0 · VPP Coordination Platform
-            </span>
-          </div>
-
-          <h1 className="hero-title">
-            The Grid<br />
-            <span className="hero-title-accent">Renegotiated.</span>
+      {/* ── Hero Section (Full bleed video) ─────────────────────────── */}
+      <section style={{ height: "100vh", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, zIndex: 0 }} className="img-mask">
+          <video className="parallax-bg" data-speed="0.3" src="/assets/14754684_3840_2160_60fps.mp4" autoPlay loop muted playsInline style={{ width: "100%", height: "130%", objectFit: "cover", filter: "brightness(0.6) saturate(1.2)" }} />
+        </div>
+        
+        {/* Likova specific "stepped" blocks floating over the video */}
+        <div className="parallax-el reveal-up" data-speed="0.1" style={{ position: "absolute", bottom: "10vh", left: "5vw", zIndex: 2, background: "var(--bg-cream)", padding: "var(--space-8)", maxWidth: "800px" }}>
+          <h1 className="likova-heading" style={{ fontSize: "clamp(48px, 8vw, 120px)", color: "var(--fg-primary)", lineHeight: 0.9, letterSpacing: "0.08em", margin: 0 }}>
+            GRID<br />NEXUS
           </h1>
-
-          <p className="hero-subtitle">
-            GridNexus is a research-grade Virtual Power Plant coordination platform
-            combining game-theoretic negotiation, AI safety enforcement, and
-            cryptographically auditable settlement on real distribution networks.
+          <div className="likova-line" style={{ margin: "var(--space-6) 0", background: "var(--border-medium)" }} />
+          <p className="likova-heading" style={{ fontSize: "13px", color: "var(--fg-secondary)", maxWidth: "400px", lineHeight: 1.8, letterSpacing: "0.15em" }}>
+            WHERE FUTURE ENERGY VPP COORDINATION GAINS MOMENTUM. A TRUE NETWORK OF INTELLIGENT AGENTS.
           </p>
-
-          <div className="hero-actions">
-            <button
-              className="btn btn-teal btn-lg"
-              onClick={() => navigate("/login")}
-              id="hero-get-started"
-            >
-              Get Started →
-            </button>
-            <a href="#platform" className="btn btn-outline-white btn-lg">
-              Explore Platform
-            </a>
-          </div>
-
-          <div className="hero-stats" aria-label="Platform statistics">
-            <StatCounter value={250} suffix="+"  label="DER Agents Supported" />
-            <StatCounter value={10}  suffix=""   label="Negotiation Baselines" />
-            <StatCounter value={33}  suffix="-Bus" label="IEEE Network Configs" />
-            <StatCounter value={100} suffix="%"  label="Audit Immutability" />
-          </div>
         </div>
 
-        {/* Scroll cue */}
-        <div className="hero-scroll-cue" aria-hidden="true">
-          <div className="hero-scroll-line" />
+        <div className="parallax-el reveal-up" data-speed="0.15" style={{ position: "absolute", bottom: "15vh", right: "5vw", zIndex: 2, background: "var(--fg-primary)", padding: "var(--space-6)", width: "300px" }}>
+           <p className="likova-heading" style={{ fontSize: "12px", color: "var(--bg-cream)", lineHeight: 1.6 }}>
+             THE BUSINESS CENTER ON THE EDGE OF THE CAPITAL. INNOVATIVE APPROACH AND BOLD ARCHITECTURAL FORMS.
+           </p>
+        </div>
+      </section>
+
+      {/* ── Architectural Typographic Statement ──────────────────────── */}
+      <section className="likova-block-navy" style={{ padding: "20vh 5vw", position: "relative" }}>
+        <div className="reveal-up">
+          <h2 className="likova-heading" style={{ fontSize: "clamp(32px, 5vw, 64px)", lineHeight: 1.2, maxWidth: "1200px", margin: "0 auto", letterSpacing: "0.1em", color: "var(--fg-primary)", textAlign: "center" }}>
+            LIKE A STRIKING WORK OF ART, THIS PLATFORM TURNS HEADS AND TRANSFORMS THE <span className="outline-text">CITYSCAPE</span>. GRIDNEXUS WILL BECOME A LAUNCHING PAD FOR DOZENS OF AMBITIOUS <span className="outline-text">PROJECTS</span>.
+          </h2>
+        </div>
+        
+        {/* Staggered overlapping architectural images */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-4)", marginTop: "15vh", position: "relative" }}>
+          <div className="img-mask reveal-up parallax-el" data-speed="0.05" style={{ height: "500px", marginTop: "100px" }}>
+            <img src="/assets/pexels-mohamed-b-2151113020-33661084.jpg" alt="Architecture" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(20%)" }} />
+          </div>
+          <div className="img-mask reveal-up" style={{ height: "600px", zIndex: 2 }}>
+            <video src="/assets/9875909-uhd_3840_2160_30fps.mp4" autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.7)" }} />
+          </div>
+          <div className="img-mask reveal-up parallax-el" data-speed="-0.05" style={{ height: "400px", marginTop: "200px" }}>
+            <img src="/assets/pexels-oguzcobn-37824217.jpg" alt="Architecture 2" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(20%)" }} />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Platform Explanation ──────────────────────────────────────── */}
+      <section className="likova-block-white" style={{ padding: "15vh 5vw", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10vw" }}>
+          <div>
+            <h2 className="likova-heading reveal-up" style={{ fontSize: "24px", color: "var(--fg-dark-primary)", marginBottom: "var(--space-6)" }}>
+              WHAT IS GRIDNEXUS?
+            </h2>
+            <div className="likova-line" style={{ background: "rgba(0,0,0,0.1)" }} />
+          </div>
+          <div className="reveal-up">
+            <p className="likova-heading" style={{ fontSize: "clamp(20px, 3vw, 28px)", color: "var(--fg-dark-primary)", lineHeight: 1.4, marginBottom: "var(--space-8)" }}>
+              GRIDNEXUS IS A VIRTUAL POWER PLANT (VPP) COORDINATION PLATFORM. WE BRIDGE THE GAP BETWEEN THEORETICAL AI RESEARCH AND REAL-WORLD ENERGY PHYSICS.
+            </p>
+            <p className="likova-heading" style={{ fontSize: "16px", color: "var(--fg-dark-secondary)", lineHeight: 1.8, marginBottom: "var(--space-6)", maxWidth: "800px" }}>
+              AS RENEWABLE DISTRIBUTED ENERGY RESOURCES (DER) LIKE SOLAR PANELS, BATTERIES, AND ELECTRIC VEHICLES BECOME UBIQUITOUS, COORDINATING THEM AT SCALE REQUIRES MORE THAN JUST SIMPLE HEURISTICS. GRIDNEXUS INTRODUCES A TRULY INTELLIGENT ENERGY BROKER. IT USES ADVANCED LLM-DRIVEN NEGOTIATION FOR BILATERAL ENERGY TRADING BETWEEN PROSUMERS, REINFORCEMENT LEARNING ORACLES FOR DYNAMIC PRICING SIGNALS, AND STRICT LINDISTFLOW SOLVERS TO MATHEMATICALLY GUARANTEE THAT EVERY SINGLE TRADE IS PHYSICALLY POSSIBLE ON THE ACTUAL GRID TOPOLOGY.
+            </p>
+            <p className="likova-heading" style={{ fontSize: "16px", color: "var(--fg-dark-secondary)", lineHeight: 1.8, maxWidth: "800px" }}>
+              EVERY NEGOTIATION ROUND, BAYESIAN BELIEF UPDATE, AND SETTLEMENT IS LOGGED TO AN APPEND-ONLY SHA-256 HASH CHAIN. THIS CREATES A FULLY AUDITABLE, IDEMPOTENT, AND TAMPER-PROOF RECORD OF THE ENTIRE COALITION.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Giant Likova Numbers (Stats) ─────────────────────────────── */}
+      <section style={{ background: "var(--bg-white)", position: "relative", overflow: "hidden", borderTop: "1px solid var(--border-light)" }}>
+        {/* Faded background image mimicking the wireframes from Likova */}
+        <div style={{ position: "absolute", inset: 0, opacity: 0.1, zIndex: 0 }}>
+          <img src="/assets/pexels-china-yu-200611083-35454188.jpg" alt="bg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+        
+        <div style={{ position: "relative", zIndex: 1, padding: "15vh 5vw", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid var(--border-light)" }}>
+           
+           <div className="reveal-up" style={{ borderRight: "1px solid var(--border-light)", paddingRight: "var(--space-8)" }}>
+             <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)", marginBottom: "var(--space-4)" }}>VARIABLE NUMBER OF</div>
+             <div className="likova-line" style={{ background: "var(--border-medium)", marginBottom: "var(--space-8)" }} />
+             <div className="likova-huge-number" ref={agentsCount.ref as any}>{agentsCount.display}</div>
+             <div className="likova-heading" style={{ fontSize: "32px", marginTop: "var(--space-4)", color: "var(--fg-primary)" }}>AGENTS</div>
+           </div>
+           
+           <div className="reveal-up" style={{ borderRight: "1px solid var(--border-light)", padding: "0 var(--space-8)" }}>
+             <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)", marginBottom: "var(--space-4)" }}>SETTLEMENT LATENCY UNDER</div>
+             <div className="likova-line" style={{ background: "var(--border-medium)", marginBottom: "var(--space-8)" }} />
+             <div className="likova-huge-number" ref={latencyCount.ref as any}>{latencyCount.display}</div>
+             <div className="likova-heading" style={{ fontSize: "32px", marginTop: "var(--space-4)", color: "var(--fg-primary)" }}>MILLISECONDS</div>
+           </div>
+           
+           <div className="reveal-up" style={{ paddingLeft: "var(--space-8)" }}>
+             <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)", marginBottom: "var(--space-4)" }}>LINDISTFLOW CERTIFICATION</div>
+             <div className="likova-line" style={{ background: "var(--border-medium)", marginBottom: "var(--space-8)" }} />
+             <div className="likova-huge-number" ref={certCount.ref as any}>{certCount.display}</div>
+             <div className="likova-heading" style={{ fontSize: "32px", marginTop: "var(--space-4)", color: "var(--fg-primary)" }}>GUARANTEE</div>
+           </div>
+
+        </div>
+      </section>
+
+      {/* ── Asymmetric Layout (Features) ──────────────────────────────── */}
+      <section style={{ position: "relative" }}>
+        {FEATURES.map((feature, i) => (
+          <div key={feature.num} style={{ display: "grid", gridTemplateColumns: i % 2 === 0 ? "55% 45%" : "45% 55%", minHeight: "80vh", borderBottom: "1px solid var(--border-light)" }}>
+            
+            {/* Image Block */}
+            <div style={{ position: "relative", order: i % 2 === 0 ? 1 : 2, borderLeft: i % 2 === 0 ? "none" : "1px solid var(--border-light)", borderRight: i % 2 === 0 ? "1px solid var(--border-light)" : "none" }}>
+              <div className="img-mask" style={{ width: "100%", height: "100%" }}>
+                 <img src={feature.img} alt={feature.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              {/* Floating offset number box */}
+              <div className="parallax-el" data-speed="0.1" style={{ position: "absolute", top: "10%", [i % 2 === 0 ? "right" : "left"]: "-40px", background: "var(--fg-primary)", color: "var(--bg-cream)", padding: "20px 30px", zIndex: 10 }}>
+                <span className="likova-heading" style={{ fontSize: "40px", margin: 0 }}>{feature.num}</span>
+              </div>
+            </div>
+
+            {/* Text Block */}
+            <div style={{ padding: "10vw", display: "flex", flexDirection: "column", justifyContent: "center", order: i % 2 === 0 ? 2 : 1, background: i % 2 === 0 ? "var(--bg-cream)" : "var(--bg-white)" }}>
+              <h2 className="likova-heading reveal-up" style={{ fontSize: "clamp(32px, 4vw, 56px)", marginBottom: "var(--space-8)", color: "var(--fg-primary)", lineHeight: 1.1 }}>
+                {feature.title}
+              </h2>
+              <div className="likova-line" style={{ background: "var(--border-strong)", marginBottom: "var(--space-8)" }} />
+              <p className="likova-heading reveal-up" style={{ fontSize: "14px", color: "var(--fg-secondary)", lineHeight: 2, maxWidth: "500px" }}>
+                {feature.desc}
+              </p>
+            </div>
+            
+          </div>
+        ))}
+      </section>
+
+      {/* ── Academic Research Highlights ─────────────────────────────── */}
+      <section id="research" className="likova-block-navy" style={{ padding: "15vh 5vw", position: "relative" }}>
+        <h2 className="likova-heading reveal-up" style={{ fontSize: "clamp(32px, 5vw, 64px)", color: "var(--fg-primary)", marginBottom: "var(--space-8)", letterSpacing: "0.1em" }}>
+          THEORETICAL FOUNDATIONS
+        </h2>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "var(--space-6)" }}>
+          {[
+            {
+              title: "SOCP AC POWER FLOW",
+              desc: "Replaces traditional LinDistFlow with Second-Order Cone Programming (SOCP) relaxations, guaranteeing exact bounds for voltage and active/reactive power in radial microgrids.",
+              ref: "[1] Low, S. H. (2014). 'Convex Relaxation of Optimal Power Flow.' IEEE Transactions on Control of Network Systems."
+            },
+            {
+              title: "FEDERATED MAPPO (FedMAPPO)",
+              desc: "Implements privacy-preserving Multi-Agent PPO. Agents train local actor networks and sync via FedAvg, keeping cost curves and surplus proprietary from the centralized critic.",
+              ref: "[2] Yu, C. et al. (2022). 'The Surprising Effectiveness of PPO in Cooperative Multi-Agent Games.' NeurIPS."
+            },
+            {
+              title: "AGENTIC LLM ORACLE",
+              desc: "A Retrieval-Augmented Generation (RAG) Oracle ingest real-time exogenous weather (cloud cover, temp) to broadcast Bayesian persuasion signals, optimally steering coalitional behavior.",
+              ref: "[3] Kamenica, E., & Gentzkow, M. (2011). 'Bayesian Persuasion.' American Economic Review."
+            }
+          ].map((item, i) => (
+            <div key={i} className="reveal-up" style={{ background: "rgba(255,255,255,0.05)", padding: "var(--space-6)", borderLeft: "2px solid var(--border-medium)" }}>
+              <h3 className="likova-heading" style={{ fontSize: "20px", color: "var(--fg-primary)", marginBottom: "var(--space-4)" }}>{item.title}</h3>
+              <p className="likova-heading" style={{ fontSize: "14px", color: "var(--fg-secondary)", lineHeight: 1.8, marginBottom: "var(--space-4)" }}>{item.desc}</p>
+              <div className="likova-line" style={{ background: "rgba(255,255,255,0.1)", marginBottom: "var(--space-4)" }} />
+              <p style={{ fontSize: "12px", color: "var(--fg-muted)", fontStyle: "italic" }}>{item.ref}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* ── Ticker ───────────────────────────────────────────────────── */}
-      <div className="ticker-wrap" aria-hidden="true">
-        <div className="ticker-track">
-          {TICKER.map((item, i) => (
-            <span key={i} className="ticker-item">
-              <span className="ticker-dot" />
+      <div style={{ padding: "var(--space-6) 0", overflow: "hidden", whiteSpace: "nowrap", borderBottom: "1px solid var(--border-light)", background: "var(--fg-primary)" }}>
+        <div style={{ display: "inline-block", animation: "ticker 40s linear infinite" }}>
+          {[...TICKER, ...TICKER].map((item, i) => (
+            <span key={i} className="likova-heading" style={{ fontSize: "16px", color: "var(--bg-cream)", margin: "0 40px" }}>
               {item}
             </span>
           ))}
         </div>
       </div>
 
-      {/* ── Platform Overview ─────────────────────────────────────────── */}
-      <div style={{ background: "var(--bg-white)", borderTop: "1px solid var(--border-light)", borderBottom: "1px solid var(--border-light)" }}>
-        <div className="section reveal" id="platform">
-          <div className="section-label">Platform</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-20)", alignItems: "center" }}>
-            {/* Left: text */}
-            <div>
-              <h2 className="section-title">
-                From negotiation<br />to settlement,<br />
-                <em style={{ fontStyle: "italic", color: "var(--fg-muted)" }}>cryptographically.</em>
-              </h2>
-              <p className="section-subtitle" style={{ marginBottom: "var(--space-8)" }}>
-                Every DER trade flows through a rigorous multi-stage pipeline:
-                Oracle signal → Bayesian belief update → LLM proposal → DQN safety gate →
-                LinDistFlow verification → atomic committed settlement with full hash-chain audit.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-                {PIPELINE.map(p => (
-                  <div key={p.stage} className="pipeline-step">
-                    <span className="pipeline-step-num">{p.num}</span>
-                    <div>
-                      <div className="pipeline-step-title">{p.stage}</div>
-                      <div className="pipeline-step-desc">{p.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right: terminal */}
-            <div className="terminal-panel">
-              <div className="terminal-bar">
-                <div className="terminal-dots">
-                  {["#FF5F57", "#FEBC2E", "#28C840"].map(c => (
-                    <div key={c} className="terminal-dot" style={{ background: c }} />
-                  ))}
-                </div>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "rgba(244,242,238,0.3)", letterSpacing: "0.05em" }}>
-                  gridnexus — negotiation pipeline
-                </span>
-              </div>
-              <div className="terminal-body">
-                <TerminalLine color="rgba(244,242,238,0.45)" prefix="SYS"  text="Oracle signal received: HIGH_RENEWABLE" />
-                <TerminalLine color="#00C9A7"                 prefix="BLIF" text="Bayesian posterior: 0.847 (TRADE_NOW)" />
-                <TerminalLine color="rgba(244,242,238,0.45)" prefix="LLM"  text="Proposal: COUNTER_OFFER @0.089/kWh, 42kWh" />
-                <TerminalLine color="rgba(244,242,238,0.45)" prefix="VAL"  text="Schema: ✓  Economic: ✓  Resource: ✓" />
-                <TerminalLine color="#00C9A7"                 prefix="DQN"  text="Action permitted (q=0.923, margin=0.41)" />
-                <TerminalLine color="#E8A020"                 prefix="STAB" text="Coalition core feasible, ε=0.12" />
-                <TerminalLine color="#00C9A7"                 prefix="GRID" text="LinDistFlow: FEASIBLE, max load 74.3%" />
-                <TerminalLine color="#00C9A7"                 prefix="SETL" text="COMMITTED — hash: a3f9...2c1d" delay />
-              </div>
-            </div>
-          </div>
+      {/* ── CTA / Footer ─────────────────────────────────────────────── */}
+      <section style={{ padding: "20vh 5vw 5vh", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        
+        <div style={{ position: "absolute", inset: 0, zIndex: 0, opacity: 0.05 }} className="img-mask">
+          <img className="parallax-bg" data-speed="0.2" src="/assets/pexels-kindelmedia-9875676.jpg" alt="bg" style={{ width: "100%", height: "150%", objectFit: "cover" }} />
         </div>
-      </div>
-
-      {/* ── Full-bleed Grid Towers Image Section ─────────────────────── */}
-      <div
-        className="fullbleed-section"
-        style={{ height: "60vh", minHeight: "440px", display: "flex", alignItems: "center" }}
-      >
-        <video
-          className="section-bg-img"
-          src="/videos/grid_towers.mp4"
-          poster="/grid_towers.jpg"
-          autoPlay loop muted playsInline
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-        />
-        <div className="overlay-dark" />
-        <div className="content section" style={{ padding: "var(--space-16) var(--space-10)" }}>
-          <div className="section-label" style={{ color: "var(--brand-teal)" }}>
-            <span style={{ width: "24px", height: "1px", background: "var(--brand-teal)", display: "inline-block" }} />
-            Infrastructure
+        
+        <h2 className="likova-heading reveal-up" style={{ position: "relative", zIndex: 1, fontSize: "clamp(48px, 10vw, 160px)", marginBottom: "var(--space-8)", letterSpacing: "0.15em", color: "var(--fg-primary)" }}>
+          GRIDNEXUS
+        </h2>
+        <div className="likova-line" style={{ position: "relative", zIndex: 1, background: "var(--border-medium)", marginBottom: "var(--space-16)", maxWidth: "800px" }} />
+        
+        <div className="reveal-up" style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", width: "100%", maxWidth: "1200px", flexWrap: "wrap", gap: "var(--space-6)" }}>
+          <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)" }}>© 2026, GRIDNEXUS</div>
+          <div className="likova-heading likova-btn" style={{ fontSize: "11px", color: "var(--fg-secondary)", cursor: "pointer", border: "1px solid var(--border-medium)", padding: "10px 20px" }} onClick={() => navigate("/dashboard")}>
+            ENTER COMMAND CENTER
           </div>
-          <h2 style={{
-            fontFamily: "var(--font-serif)",
-            fontSize: "clamp(40px, 6vw, 88px)",
-            fontWeight: 300,
-            color: "#fff",
-            lineHeight: 1.0,
-            letterSpacing: "-0.03em",
-            maxWidth: "700px",
-          }}>
-            The physical grid,<br />
-            <em style={{ fontStyle: "italic", color: "var(--brand-teal)" }}>mathematically verified.</em>
-          </h2>
+          <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)" }}>WEBSITE BY GRIDNEXUS CORE</div>
         </div>
-      </div>
-
-      {/* ── Features ─────────────────────────────────────────────────── */}
-      <div style={{ background: "var(--bg-cream)", borderBottom: "1px solid var(--border-light)" }}>
-        <div className="section reveal" id="features">
-          <div className="section-label">Features</div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "var(--space-12)" }}>
-            <h2 className="section-title" style={{ marginBottom: 0 }}>
-              Built for research.<br />
-              Hardened for operations.
-            </h2>
-            <p style={{ fontSize: "14px", color: "var(--fg-muted)", maxWidth: "280px", textAlign: "right", lineHeight: 1.7 }}>
-              Six core capabilities powering every Virtual Power Plant deployment.
-            </p>
-          </div>
-          <div className="feature-grid">
-            {FEATURES.map(f => (
-              <div key={f.title} className="feature-card">
-                <div className="feature-card-corner" />
-                <div className="feature-card-num">{f.num}</div>
-                <div className="feature-card-title">{f.title}</div>
-                <div className="feature-card-desc">{f.desc}</div>
-              </div>
-            ))}
-          </div>
+        
+        <div className="likova-heading" style={{ position: "relative", zIndex: 1, fontSize: "10px", color: "var(--fg-muted)", marginTop: "var(--space-12)", maxWidth: "800px", lineHeight: 1.8 }}>
+          ALL INFORMATION PRESENTED ON THIS WEBSITE IS FOR INFORMATIONAL PURPOSES ONLY AND UNDER NO CIRCUMSTANCES CONSTITUTES A PUBLIC OFFER. COMPLETED PROPERTIES MAY DIFFER FROM 3D VISUALIZATIONS. ALL MATERIALS ARE APPROPRIATE AND SUBJECT TO CHANGE.
         </div>
-      </div>
+      </section>
 
-      {/* ── Solar Building Full-bleed section ──────────────────────────── */}
-      <div className="fullbleed-section" style={{ overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: "560px" }}>
-          {/* Image/Video left */}
-          <div style={{ position: "relative", overflow: "hidden" }}>
-            <video
-              src="/videos/solar_building.mp4"
-              poster="/solar_building.jpg"
-              autoPlay loop muted playsInline
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block", transition: "transform 0.6s ease" }}
-            />
-          </div>
-          {/* Content right */}
-          <div style={{
-            background: "var(--brand-navy)",
-            padding: "var(--space-16) var(--space-12)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-          }}>
-            <div className="section-label" style={{ color: "var(--brand-teal)" }}>
-              <span style={{ width: "24px", height: "1px", background: "var(--brand-teal)", display: "inline-block" }} />
-              Integration
-            </div>
-            <h2 style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: "clamp(32px, 4vw, 56px)",
-              fontWeight: 300,
-              color: "#fff",
-              lineHeight: 1.1,
-              letterSpacing: "-0.02em",
-              marginBottom: "var(--space-6)",
-            }}>
-              Buildings as<br />active grid participants.
-            </h2>
-            <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: "var(--space-8)", fontWeight: 300 }}>
-              GridNexus coordinates solar arrays, battery storage, and EV chargers
-              across commercial buildings — transforming static consumers into
-              intelligent prosumers in a dynamic energy marketplace.
-            </p>
-            <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-              <span className="badge badge--live">Solar Integration</span>
-              <span className="badge badge--live">Battery Storage</span>
-              <span className="badge badge--live">EV Charging</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Research Section ──────────────────────────────────────────── */}
-      <div style={{ background: "var(--bg-white)", borderTop: "1px solid var(--border-light)", borderBottom: "1px solid var(--border-light)" }}>
-        <div className="section reveal" id="research">
-          <div className="section-label">Research Platform</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-20)" }}>
-            <div>
-              <h2 className="section-title">
-                Reproducible.<br />
-                <em style={{ fontStyle: "italic", color: "var(--fg-muted)" }}>Publishable.</em>
-              </h2>
-              <p className="section-subtitle" style={{ marginBottom: "var(--space-8)" }}>
-                A complete evaluation suite with 10 scenario types, 10 baselines (B0–FULL),
-                IEEE standard network configs, and deterministic seed management for valid
-                scientific comparisons.
-              </p>
-              <button
-                className="btn btn-primary"
-                onClick={() => navigate("/dashboard/experiments")}
-              >
-                View Experiment Suite →
-              </button>
-            </div>
-
-            {/* Research stats grid */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "1px",
-              background: "var(--border-medium)",
-              border: "1px solid var(--border-medium)",
-            }}>
-              {[
-                { label: "Scenarios", value: "10" },
-                { label: "Baselines", value: "11" },
-                { label: "DER Scale", value: "5–250" },
-                { label: "Seeds",     value: "≥ 5" },
-              ].map(s => (
-                <div key={s.label} className="stat-cell">
-                  <div className="stat-cell-corner" />
-                  <div className="stat-cell-value">{s.value}</div>
-                  <div className="stat-cell-label">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Control Room Full-bleed ──────────────────────────────────── */}
-      <div
-        className="fullbleed-section"
-        style={{ height: "55vh", minHeight: "400px", display: "flex", alignItems: "center" }}
-      >
-        <video
-          className="section-bg-img"
-          src="/videos/vpp_control_room.mp4"
-          poster="/vpp_control_room.jpg"
-          autoPlay loop muted playsInline
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-        />
-        <div className="overlay-dark" style={{ background: "rgba(12,11,9,0.7)" }} />
-        <div className="content" style={{ padding: "0 var(--space-10)", maxWidth: "var(--section-max)", margin: "0 auto", width: "100%" }}>
-          <p style={{
-            fontFamily: "var(--font-serif)",
-            fontSize: "clamp(18px, 2.5vw, 28px)",
-            fontWeight: 300,
-            fontStyle: "italic",
-            color: "rgba(255,255,255,0.6)",
-            maxWidth: "560px",
-            lineHeight: 1.5,
-            letterSpacing: "-0.01em",
-          }}>
-            "Every negotiation event appended to an immutable SHA-256 hash chain.
-            Tamper detection at the cryptographic level."
-          </p>
-        </div>
-      </div>
-
-      {/* ── Audit Section ─────────────────────────────────────────────── */}
-      <div style={{ background: "var(--bg-cream)", borderTop: "1px solid var(--border-light)", borderBottom: "1px solid var(--border-light)" }}>
-        <div className="section reveal" id="audit">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-20)", alignItems: "center" }}>
-            <div>
-              <div className="section-label">Audit & Security</div>
-              <h2 className="section-title">
-                Every event.<br />
-                <em style={{ fontStyle: "italic", color: "var(--fg-muted)" }}>Immutably recorded.</em>
-              </h2>
-              <p className="section-subtitle" style={{ marginBottom: "var(--space-8)" }}>
-                An append-only SHA-256 hash chain ties every negotiation event, settlement,
-                and belief update together. Postgres-level delete triggers make tampering
-                cryptographically detectable.
-              </p>
-              <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-                <div className="badge badge--live">Append-Only DB</div>
-                <div className="badge badge--info">SHA-256 Chain</div>
-                <div className="badge badge--neutral">JWT + RBAC</div>
-                <div className="badge badge--neutral">AES-GCM AAD</div>
-              </div>
-            </div>
-
-            {/* Hash chain mockup */}
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title">Audit Event Chain</span>
-                <div className="badge badge--live">
-                  <span className="badge-dot badge-dot--pulse" />
-                  Verified
-                </div>
-              </div>
-              {[
-                { seq: "#482", type: "SETTLEMENT_COMMITTED", hash: "a3f9c2...2c1d", verified: true },
-                { seq: "#481", type: "GRID_CERTIFIED",       hash: "8e4b1a...9f3c", verified: true },
-                { seq: "#480", type: "STABILITY_CHECKED",    hash: "d7c3e8...4a2f", verified: true },
-                { seq: "#479", type: "OFFER_MADE",           hash: "2b8f5d...1e7a", verified: true },
-              ].map(evt => (
-                <div key={evt.seq} className="hash-event">
-                  <div className="hash-seq">{evt.seq}</div>
-                  <div className="hash-body">
-                    <div className="hash-event-type">{evt.type}</div>
-                    <div className="hash-value">{evt.hash}</div>
-                  </div>
-                  <div className={`hash-integrity hash-integrity--${evt.verified ? "verified" : "broken"}`}>
-                    {evt.verified ? "✓" : "✗"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── CTA Section ───────────────────────────────────────────────── */}
-      <div className="cta-section">
-        <div style={{ position: "relative", zIndex: 2, maxWidth: "var(--section-max)", margin: "0 auto" }}>
-          <div className="section-label" style={{ justifyContent: "center", marginBottom: "var(--space-6)" }}>
-            <span style={{ width: "24px", height: "1px", background: "var(--brand-teal)", display: "inline-block" }} />
-            Ready
-            <span style={{ width: "24px", height: "1px", background: "var(--brand-teal)", display: "inline-block" }} />
-          </div>
-          <h2 className="cta-title">
-            Open the<br />Command Center.
-          </h2>
-          <p className="cta-subtitle">
-            Monitor live negotiations, inspect coalition stability, verify grid certificates,
-            and trace the full cryptographic audit chain — all in one place.
-          </p>
-          <div style={{ display: "flex", gap: "var(--space-4)", justifyContent: "center", flexWrap: "wrap" }}>
-            <button
-              className="btn btn-teal btn-xl"
-              onClick={() => navigate("/login")}
-              id="cta-get-started"
-            >
-              Get Started →
-            </button>
-            <a
-              href="https://github.com"
-              className="btn btn-outline-white btn-xl"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View on GitHub
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="site-footer" role="contentinfo">
-        <div className="footer-top">
-          <div>
-            <div className="footer-brand-name">
-              <div style={{
-                width: "22px", height: "22px",
-                background: "var(--brand-teal)",
-                clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)",
-              }} aria-hidden="true" />
-              GridNexus
-            </div>
-            <p className="footer-tagline">
-              Energy 5.0 VPP Coordination Platform.<br />
-              Game-theoretic, AI-safe, cryptographically auditable.
-            </p>
-          </div>
-          <div>
-            <div className="footer-col-title">Platform</div>
-            <a href="#platform" className="footer-link">How It Works</a>
-            <a href="#features"  className="footer-link">Features</a>
-            <a href="#research"  className="footer-link">Research Suite</a>
-            <a href="#audit"     className="footer-link">Audit Chain</a>
-          </div>
-          <div>
-            <div className="footer-col-title">Dashboard</div>
-            <a href="/login"             className="footer-link">Sign In</a>
-            <a href="/dashboard"         className="footer-link">Overview</a>
-            <a href="/dashboard/grid"    className="footer-link">Grid Topology</a>
-            <a href="/dashboard/oracle"  className="footer-link">Oracle</a>
-          </div>
-          <div>
-            <div className="footer-col-title">Resources</div>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
-            <a href="/dashboard/experiments" className="footer-link">Experiments</a>
-            <a href="/dashboard/audit"       className="footer-link">Audit Log</a>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <div className="footer-copy">
-            © 2026 GridNexus · MIT License · Research Use
-          </div>
-          <div className="env-badge env-badge--simulation">
-            Simulation Environment — Values Are Not Live Grid Data
-          </div>
-          <div className="footer-copy">
-            Energy 5.0 · VPP Platform
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

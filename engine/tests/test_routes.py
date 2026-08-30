@@ -27,7 +27,7 @@ def test_ready_check_db_down(mock_redis, mock_db):
 
 # Agents
 def test_create_agent_valid():
-    response = client.post("/agents", json={"name": "Test Agent", "policy_metadata": {"key": "val"}})
+    response = client.post("/agents", json={"name": "Test Agent", "microgridId": "mg-1", "policy_metadata": {"key": "val"}})
     assert response.status_code == 200
     assert response.json()["name"] == "Test Agent"
 
@@ -36,13 +36,14 @@ def test_create_agent_invalid():
     response = client.post("/agents", json={"policy_metadata": {"key": "val"}})
     assert response.status_code == 422
 
-def test_negotiate_valid():
+@patch("app.routers.negotiate._fetch_agent", return_value={"capacity": 100.0, "cost": 10.0})
+def test_negotiate_valid(mock_fetch):
     response = client.post("/negotiate", json={
         "agent_id": "a1", 
         "opponent_id": "a2",
         "surplus": 100.0, 
         "round_number": 1, 
-        "action": None
+        "negotiation_id": "neg_test_1"
     })
     assert response.status_code == 200
     assert "action" in response.json()
@@ -51,12 +52,19 @@ def test_negotiate_invalid():
     # Negative surplus logic raises 422 if we rely on pydantic, or 400 if our code catches it
     # Pydantic will raise 422 for missing required fields
     response = client.post("/negotiate", json={"agent_id": "a1", "surplus": -10.0})
+    # Will fail early on pydantic or inside endpoint before fetch_agent
     assert response.status_code == 422
 
 # Stability
-def test_stability_valid():
+@patch("app.routers.stability.build_topology_from_db")
+def test_stability_valid(mock_build):
+    import networkx as nx
+    G = nx.Graph()
+    G.add_edge("mg-0", "mg-1")
+    mock_build.return_value = (G, -1)
     # mg-0 and mg-1 are adjacent in the default 5x10 city-grid (row 0, cols 0 and 1)
     response = client.post("/stability/verify", json={"coalition": ["mg-0", "mg-1"]})
+    print(response.json())
     assert response.status_code == 200
     assert response.json()["isStable"] == True
 
