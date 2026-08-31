@@ -14,6 +14,7 @@ export const connection = new Redis(REDIS_URL, {
 // Job Payload Types
 export interface StabilityJobPayload {
   coalition: string[];
+  surplusMap?: Record<string, number>;
   profiles?: Record<string, any>;
   allocationMechanism?: string;
 }

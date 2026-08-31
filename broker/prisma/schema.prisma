@@ -163,6 +163,7 @@ model GridFeasibilityCertificate {
   resultHash        String           @db.Text
   createdAt         DateTime         @default(now()) @db.Timestamptz(6)
   energyTransfers   EnergyTransfer[]
+  settlements       Settlement[]
 
   @@map("grid_feasibility_certificates")
 }

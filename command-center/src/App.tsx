@@ -36,6 +36,7 @@ const SettlementsPage     = lazy(() => import("./pages/SettlementsPage"));
 const AuditPage           = lazy(() => import("./pages/AuditPage"));
 const ExperimentsPage     = lazy(() => import("./pages/ExperimentsPage"));
 const SystemHealthPage    = lazy(() => import("./pages/SystemHealthPage"));
+const WorkflowPage        = lazy(() => import("./pages/WorkflowPage"));
 
 function PageLoader() {
   return (
@@ -106,6 +107,9 @@ export default function App() {
             }
           >
             <Route index element={<OverviewPage />} />
+            <Route path="workflow" element={
+              <Suspense fallback={<PageLoader />}><WorkflowPage /></Suspense>
+            } />
             <Route path="negotiations" element={
               <Suspense fallback={<PageLoader />}><NegotiationFeedPage /></Suspense>
             } />

@@ -19,6 +19,7 @@ Design decisions (recorded in docs/ASSUMPTIONS.md §):
 from __future__ import annotations
 
 import functools
+import os
 from typing import Any
 
 import numpy as np
@@ -27,6 +28,7 @@ from gymnasium import spaces
 from pettingzoo import ParallelEnv
 
 from app.agents.dqn_wrapper import DQNWrapper, NegotiationAction
+from app.data.india_spectral_tmy import IndiaSpectralTMYDataset
 from app.oracle.llm_oracle import fetch_weather_and_predict_stress
 from app.rl.forecasting import get_forecast_error
 
@@ -124,6 +126,9 @@ class GridNexusEnv(ParallelEnv):
         self._trade_attempts: dict[str, int] = {}
         self._trade_rejections: dict[str, int] = {}
         self._oracle_signal: float = 0.5
+        self._india_tmy = IndiaSpectralTMYDataset()
+        self._tmy_latitude = float(os.getenv("INDIA_TMY_LATITUDE", "20.5937"))
+        self._tmy_longitude = float(os.getenv("INDIA_TMY_LONGITUDE", "78.9629"))
 
     # ── Spaces ────────────────────────────────────────────────────────────────
 
@@ -162,8 +167,20 @@ class GridNexusEnv(ParallelEnv):
         self._step = 0
         
         # Real-time RAG Oracle Integration
-        temp = float(self._rng.uniform(15, 35))
-        cloud = float(self._rng.uniform(0, 100))
+        if self._india_tmy.available:
+            tmy_hour = int(self._rng.integers(0, self._india_tmy.HOURS_PER_YEAR))
+            tmy_sample = self._india_tmy.sample(
+                tmy_hour, self._tmy_latitude, self._tmy_longitude
+            )
+            if tmy_sample.air_temperature_c > 0:
+                temp = tmy_sample.air_temperature_c
+                cloud = tmy_sample.diffuse_fraction * 100
+            else:
+                temp = float(self._rng.uniform(15, 35))
+                cloud = float(self._rng.uniform(0, 100))
+        else:
+            temp = float(self._rng.uniform(15, 35))
+            cloud = float(self._rng.uniform(0, 100))
         oracle_pred = fetch_weather_and_predict_stress(temp, cloud)
         self._oracle_signal = float(oracle_pred.get("stress_index", 0.5))
 

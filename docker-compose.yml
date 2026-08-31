@@ -64,6 +64,13 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://gridnexus:gridnexus_dev@postgres:5432/gridnexus
       - REDIS_URL=redis://redis:6379/0
+      - OPSD_HOUSEHOLD_DATA_PATH=/data/opsd-household/household_data_60min_singleindex.csv
+      - INDIA_SPECTRAL_TMY_PATH=/data/india_spectral_tmy.h5
+      - INDIA_TMY_LATITUDE=20.5937
+      - INDIA_TMY_LONGITUDE=78.9629
+    volumes:
+      - ./opsd-household_data-2020-04-15:/data/opsd-household:ro
+      - ./india_spectral_tmy.h5:/data/india_spectral_tmy.h5:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +92,7 @@ services:
     build:
       context: ./broker
       dockerfile: Dockerfile
+    image: gridnexus-broker
     container_name: gridnexus-broker
     restart: unless-stopped
     command: sh -c "npx prisma db push --skip-generate && node dist/index.js"
@@ -114,9 +122,7 @@ services:
   # Layer 2 – broker-worker (Node 20, BullMQ worker)
   # ---------------------------------------------------------------------------
   broker-worker:
-    build:
-      context: ./broker
-      dockerfile: Dockerfile
+    image: gridnexus-broker
     container_name: gridnexus-broker-worker
     command: npm run worker
     restart: unless-stopped

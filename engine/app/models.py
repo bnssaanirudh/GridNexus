@@ -118,4 +118,4 @@ class User(Base):
     role         = Column(String(30),  nullable=False, default="VIEWER")
     active       = Column(Boolean,     nullable=False, default=True)
     createdAt    = Column(DateTime(timezone=True), server_default=func.now())
-    updatedAt    = Column(DateTime(timezone=True), onupdate=func.now())
+    updatedAt    = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())

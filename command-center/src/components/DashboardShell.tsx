@@ -14,6 +14,7 @@ const NAV_SECTIONS = [
     label: "Monitoring",
     items: [
       { path: "/dashboard",              icon: "◈", label: "Overview",       end: true },
+      { path: "/dashboard/workflow",     icon: "⎈", label: "System Workflow" },
       { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
       { path: "/dashboard/coalitions",   icon: "◎", label: "Coalitions" },
       { path: "/dashboard/grid",         icon: "⟁", label: "Grid Topology" },

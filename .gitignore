@@ -77,3 +77,28 @@ Desktop.ini
 tmp/
 temp/
 *.mp4
+
+# ---- Database binaries (never commit SQLite files) ----
+*.db
+*.sqlite
+*.sqlite3
+
+# ---- Ad-hoc patch scripts ----
+broker/patch_broker*.py
+
+# ---- Experiment artifacts (large; managed by DVC or S3) ----
+experiments/results/
+experiments/runs/
+engine/artifacts/
+engine/paper_figures/*.png
+engine/paper_figures/*.pdf
+
+# ---- Hypothesis database ----
+.hypothesis/
+
+# ---- Pytest cache ----
+engine/.pytest_cache/
+broker/.pytest_cache/
+
+india_spectral_tmy.h5
+opsd-household_data-2020-04-15/

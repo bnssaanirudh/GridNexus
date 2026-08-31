@@ -112,7 +112,20 @@ const gridWorker = new Worker<GridJobPayload>(
       if (!fetchResponse.ok) {
         throw new Error(`Engine returned ${fetchResponse.status}`);
       }
-      const data = await fetchResponse.json();
+      const data = await fetchResponse.json() as {
+        negotiationId: string;
+        networkVersion: number;
+        solver: string;
+        solverVersion: string;
+        feasible: boolean;
+        violations: any[];
+        maxLineLoadingPct: number;
+        minVoltagePu: number;
+        maxVoltagePu: number;
+        powerBalanceError: number;
+        inputHash: string;
+        resultHash: string;
+      };
       
       // 2. Write the certificate back to DB
       const cert = await prisma.gridFeasibilityCertificate.create({

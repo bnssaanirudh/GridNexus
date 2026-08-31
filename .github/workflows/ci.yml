@@ -355,3 +355,29 @@ jobs:
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
         run: npx vitest run tests/integration/golden-path.test.ts --reporter=verbose
 
+# ---------------------------------------------------------------------------
+# Merge Gate — all 6 CI jobs must pass before any PR can be merged.
+# Configure branch protection on `main` to require ONLY this job.
+# ---------------------------------------------------------------------------
+  all-checks-pass:
+    name: "✅ All checks passed (merge gate)"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - engine-tests
+      - adversarial-tests
+      - broker-tests
+      - smoke-test
+      - integration-tests
+      - golden-path-test
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          results='${{ toJSON(needs) }}'
+          echo "$results"
+          # Fail if any dependency did not succeed
+          if echo "$results" | grep -v '"result":"success"' | grep '"result":' ; then
+            echo "One or more required jobs did not succeed."
+            exit 1
+          fi
+          echo "All 6 CI jobs passed — safe to merge."

@@ -14,10 +14,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
   
   // Only mock if we are using the demo mock token or if it's hitting our local backend ports
   const isDemoEnv = (import.meta as any).env?.VITE_DEMO_MODE === "true";
-  const hasMockToken = getToken() === "mock.jwt.token";
-  const isBackendCall = url.includes(":3000") || url.includes(":8000");
+  const isBackendCall = url.includes(":3000") || url.includes(":8000") || url.includes("/api/");
 
-  if (isDemoEnv && hasMockToken && isBackendCall) {
+  if (isDemoEnv && isBackendCall) {
     console.log(`[Demo Mode] Intercepted fetch to ${url}`);
     
     let mockData: any = {};
@@ -27,10 +26,14 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
     } 
     else if (url.includes("/api/metrics/overview")) {
       mockData = {
-        activeAgents: 256,
-        dailyVolume: 42500,
-        avgClearingPrice: 0.114,
-        gridLoad: 72,
+        activeNegotiations: 24,
+        energyTradedKwh: 42500,
+        avgPricePerKwh: 0.114,
+        committedSettlements: 156,
+        gridPassRate: 98.5,
+        coalitionStability: 92.4,
+        oracleSignals: 142,
+        failedNegotiations: 3
       };
     }
     else if (url.includes("/api/oracle/signals")) {

@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
+import os
 
 from app.deps import check_db_health, check_redis_health
 from app.logging_middleware import RequestIdMiddleware, logger
-from app.routers import agents, metrics, negotiate, oracle, qre, stability, grid, auth
+from app.routers import agents, auth, data_sources, grid, metrics, negotiate, oracle, qre, stability
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,10 +14,17 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Enable CORS for frontend dashboard
+# ---------------------------------------------------------------------------
+# CORS — controlled via CORS_ORIGINS env var (comma-separated list of origins).
+# Empty or absent → no cross-origin access (production default).
+# Example: CORS_ORIGINS="https://app.example.com,https://admin.example.com"
+# ---------------------------------------------------------------------------
+_raw_origins = os.environ.get("CORS_ORIGINS", "")
+ALLOWED_ORIGINS: list[str] = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,   # empty list = deny all cross-origin in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +41,7 @@ app.include_router(qre.router)
 app.include_router(metrics.router)
 app.include_router(grid.router)
 app.include_router(auth.router)
+app.include_router(data_sources.router)
 
 class HealthResponse(BaseModel):
     status: str

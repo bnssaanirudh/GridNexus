@@ -100,10 +100,14 @@ class VPPValueModel(CoalitionValueModel):
         congestion_threshold: float = 100.0,
         congestion_penalty_rate: float = 0.5,
         diversity_bonus_per_seller: float = 2.0,
+        strict: bool = False,
     ) -> None:
         self.congestion_threshold = congestion_threshold
         self.congestion_penalty_rate = congestion_penalty_rate
         self.diversity_bonus_per_seller = diversity_bonus_per_seller
+        self.strict = strict
+        """strict=True: raises ValueError for agents with missing/unknown profiles.
+        Research experiments MUST use strict=True to prevent silent mock injection."""
 
     def evaluate(self, coalition: frozenset[Any], profiles: dict[Any, AgentProfile]) -> float:
         if not coalition:
@@ -119,8 +123,15 @@ class VPPValueModel(CoalitionValueModel):
             elif isinstance(profile, BuyerProfile):
                 buyers.append(profile)
             else:
-                # Default to a mock seller if not provided — only for structural
-                # graph tests. Research experiments must provide real profiles.
+                if self.strict:
+                    raise ValueError(
+                        f"VPPValueModel[strict=True]: agent '{agent_id}' has no real profile. "
+                        "Research experiments must provide SellerProfile or BuyerProfile for every agent. "
+                        "Pass strict=False only for structural graph-topology tests."
+                    )
+                # Non-strict fallback: mock seller profile for structural tests ONLY.
+                # This path is explicitly documented as test-only; research experiments
+                # must have real profiles that produce non-zero matched_energy.
                 sellers.append(SellerProfile(generation_cost=5.0, available_capacity=10.0))
 
         total_capacity = sum(s.available_capacity for s in sellers)
