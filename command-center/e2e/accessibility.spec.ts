@@ -18,9 +18,10 @@ import AxeBuilder from "@axe-core/playwright";
 
 test.describe("Accessibility Audit (Prompt 25)", () => {
   test("scores ≥ 90 on axe-core accessibility checks", async ({ page }) => {
-    await page.goto("/");
-    // Wait for the app shell to be fully rendered
-    await page.waitForSelector(".app-root", { timeout: 10_000 });
+    await page.goto("/login");
+    await page.getByRole("button", { name: /Continue as Guest/i }).click();
+    // Wait for the authenticated dashboard shell to be fully rendered.
+    await expect(page.locator(".app-shell")).toBeVisible({ timeout: 10_000 });
 
     const results = await new AxeBuilder({ page })
       // Exclude colour-contrast for static SVG (animated fill colours in the

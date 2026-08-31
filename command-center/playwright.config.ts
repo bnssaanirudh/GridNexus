@@ -23,7 +23,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npx serve dist -p 4173 --no-clipboard",
+    command: "npm run preview -- --host 0.0.0.0 --port 4173",
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 15_000,

@@ -38,7 +38,7 @@ RUN npm run build
 FROM nginx:1.27-alpine-slim AS runtime
 
 # Copy custom Nginx server block
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY command-center/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy compiled static assets from builder
 COPY --from=builder /app/command-center/dist /usr/share/nginx/html

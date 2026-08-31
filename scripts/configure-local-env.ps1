@@ -17,10 +17,11 @@ function New-Secret {
 function Set-DotEnvValue {
   param([string]$Path, [string]$Name, [string]$Value)
 
-  $lines = if (Test-Path -LiteralPath $Path) {
-    [Collections.Generic.List[string]](Get-Content -LiteralPath $Path)
-  } else {
-    [Collections.Generic.List[string]]::new()
+  $lines = [Collections.Generic.List[string]]::new()
+  if (Test-Path -LiteralPath $Path) {
+    foreach ($line in Get-Content -LiteralPath $Path) {
+      $lines.Add([string]$line)
+    }
   }
 
   $updated = $false

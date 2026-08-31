@@ -33,9 +33,10 @@ test.describe("WebSocket Reconnect (Prompt 25)", () => {
     page,
     context,
   }) => {
-    // Navigate to the app (broker is not running; badge starts as 'connecting')
-    await page.goto("/");
-    await page.waitForSelector(".app-root", { timeout: 10_000 });
+    // Enter through the supported guest-demo flow.
+    await page.goto("/login");
+    await page.getByRole("button", { name: /Continue as Guest/i }).click();
+    await expect(page.locator(".app-shell")).toBeVisible({ timeout: 10_000 });
 
     // ── Phase 1: Verify initial 'connecting' state ─────────────────────────
     // Since the local serve instance has no real broker, the wsClient will be

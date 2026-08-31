@@ -23,10 +23,11 @@ RUN python3 -m venv /app/.venv && \
     /app/.venv/bin/pip install --no-cache-dir poetry==2.1.4 poetry-plugin-export==1.9.0 && \
     /app/.venv/bin/poetry check --lock && \
     /app/.venv/bin/poetry export --only main --without-hashes --format requirements.txt --output requirements.lock.txt && \
-    sed -i '/^torch==/d; /^cuda-/d' requirements.lock.txt && \
+    sed -i '/^torch==/d; /^cuda-/d; /^nvidia-/d' requirements.lock.txt && \
     /app/.venv/bin/pip install --no-cache-dir torch==2.4.0 --index-url https://download.pytorch.org/whl/cpu && \
-    /app/.venv/bin/pip install --no-cache-dir -r requirements.lock.txt && \
-    find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    /app/.venv/bin/pip install --no-cache-dir -r requirements.lock.txt
+
+RUN find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
 # ── Stage 2: Minimal Production Runtime ────────────────────────────────────────
 FROM python:3.11-slim AS runtime

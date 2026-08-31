@@ -36,7 +36,7 @@ ENV NODE_ENV=production
 CMD ["npx", "--no-install", "prisma", "migrate", "deploy"]
 
 FROM builder AS production-deps
-WORKDIR /app/broker
+WORKDIR /app
 RUN npm prune --omit=dev --workspace broker --include-workspace-root=false && \
     cd broker && npx prisma generate
 

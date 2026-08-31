@@ -90,8 +90,8 @@ services:
   # ---------------------------------------------------------------------------
   broker:
     build:
-      context: ./broker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: broker/Dockerfile
     image: gridnexus-broker
     container_name: gridnexus-broker
     restart: unless-stopped
@@ -147,8 +147,8 @@ services:
   # ---------------------------------------------------------------------------
   command-center:
     build:
-      context: ./command-center
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: command-center/Dockerfile
     container_name: gridnexus-command-center
     restart: unless-stopped
     ports:

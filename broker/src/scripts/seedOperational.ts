@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
-import { encrypt } from "../src/db/encryption.js";
-import { commitSettlement } from "../src/services/settlementService.js";
+import { encrypt } from "../db/encryption.js";
+import { commitSettlement } from "../services/settlementService.js";
 
 const prisma = new PrismaClient();
 const AGENT_COUNT = Number.parseInt(process.env.SEED_AGENT_COUNT ?? "1000", 10);
