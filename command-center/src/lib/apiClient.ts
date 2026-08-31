@@ -36,7 +36,7 @@ export const ENGINE_URL = String(
   runtimeConfig?.engineUrl
     ?? env?.VITE_API_URL
     ?? env?.VITE_ENGINE_URL
-    ?? (env?.DEV ? `http://${host}:8000` : ""),
+    ?? (env?.DEV ? `http://${host}:8000` : "/engine"),
 ).replace(/\/$/, "");
 
 export interface ApiRequestOptions extends Omit<RequestInit, "signal"> {

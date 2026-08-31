@@ -191,7 +191,15 @@ export const oracleBroadcastWorker = new Worker<
         signal: oracleResponse.signal,
         confidence: oracleResponse.confidence,
       })
-    );
+    ).catch((error) => {
+      if (isProduction()) throw error;
+      console.warn(
+        `[OracleBroadcastWorker] Belief update persistence unavailable in simulation mode: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      return { agentsUpdated: 0, updatesCreated: 0 };
+    });
     console.log(
       `[OracleBroadcastWorker] Belief updates complete: ${cycleResult.agentsUpdated} agents updated`
     );

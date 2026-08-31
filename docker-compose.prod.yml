@@ -8,6 +8,10 @@
 services:
   postgres:
     restart: always
+    environment:
+      POSTGRES_USER: gridnexus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: gridnexus
     deploy:
       resources:
         limits:
@@ -24,6 +28,14 @@ services:
 
   redis:
     restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     deploy:
       resources:
         limits:
@@ -40,6 +52,14 @@ services:
 
   engine:
     restart: always
+    environment:
+      GRIDNEXUS_MODE: production
+      DATABASE_URL: postgresql+asyncpg://gridnexus:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/gridnexus
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET:?Set JWT_SECRET}
+      ENGINE_JWT_SECRET: ${ENGINE_JWT_SECRET:?Set ENGINE_JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS}
+      LLM_API_KEY: ${LLM_API_KEY:-}
     deploy:
       resources:
         limits:
@@ -56,6 +76,16 @@ services:
 
   broker:
     restart: always
+    environment:
+      GRIDNEXUS_MODE: production
+      NODE_ENV: production
+      DATABASE_URL: postgresql://gridnexus:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/gridnexus
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+      ENGINE_URL: http://engine:8000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      ENGINE_JWT_SECRET: ${ENGINE_JWT_SECRET:?Set ENGINE_JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS}
     deploy:
       resources:
         limits:
@@ -72,6 +102,16 @@ services:
 
   broker-worker:
     restart: always
+    environment:
+      GRIDNEXUS_MODE: production
+      NODE_ENV: production
+      DATABASE_URL: postgresql://gridnexus:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/gridnexus
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+      ENGINE_URL: http://engine:8000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      ENGINE_JWT_SECRET: ${ENGINE_JWT_SECRET:?Set ENGINE_JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS}
     deploy:
       resources:
         limits:

@@ -8,6 +8,8 @@ metadata:
     app.kubernetes.io/part-of: gridnexus-vpp
 data:
   NODE_ENV: "production"
+  GRIDNEXUS_MODE: "production"
+  CORS_ORIGINS: "https://gridnexus.example.com"
   BROKER_PORT: "3000"
   ENGINE_PORT: "8000"
   ENGINE_URL: "http://engine.gridnexus.svc.cluster.local:8000"

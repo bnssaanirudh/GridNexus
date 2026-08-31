@@ -6,6 +6,7 @@
  */
 
 import { createContext, useContext } from "react";
+import { ENGINE_URL } from "./apiClient";
 
 const TOKEN_KEY = "gn_token";
 const USER_KEY  = "gn_user";
@@ -50,12 +51,17 @@ export function getStoredUser(): AuthUser | null {
   try { return JSON.parse(raw) as AuthUser; } catch { return null; }
 }
 
-function setStoredUser(user: AuthUser): void {
+export function setStoredUser(user: AuthUser): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+export function persistSession(token: string, user: AuthUser): void {
+  setToken(token);
+  setStoredUser(user);
+}
+
 /* ── API base URL ───────────────────────────────────────────────────────── */
-const API_URL = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = ENGINE_URL;
 
 /* ── Auth API calls ─────────────────────────────────────────────────────── */
 
@@ -66,6 +72,7 @@ export interface LoginResult {
 }
 
 export async function apiLogin(username: string, password: string): Promise<LoginResult> {
+  let backendResponded = false;
   const form = new URLSearchParams();
   form.append("username", username);
   form.append("password", password);
@@ -77,23 +84,22 @@ export async function apiLogin(username: string, password: string): Promise<Logi
       body: form,
     });
 
+    backendResponded = true;
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Login failed" }));
       throw new Error(err.detail ?? "Login failed");
     }
 
     const data: LoginResult = await res.json();
-    setToken(data.access_token);
-    setStoredUser(data.user);
+    persistSession(data.access_token, data.user);
     return data;
   } catch (error) {
     const isDemoMode = (import.meta as any).env?.VITE_DEMO_MODE === "true";
-    if (isDemoMode) {
+    if (isDemoMode && !backendResponded) {
       console.warn("Backend unreachable, falling back to mock login.");
       const mockUser: AuthUser = { id: "mock-1", username: username || "Guest", email: "guest@example.com", role: "demo" };
       const mockToken = "mock.jwt.token";
-      setToken(mockToken);
-      setStoredUser(mockUser);
+      persistSession(mockToken, mockUser);
       return { access_token: mockToken, token_type: "bearer", user: mockUser };
     }
     throw error;
@@ -105,6 +111,7 @@ export async function apiRegister(
   email: string,
   password: string
 ): Promise<LoginResult> {
+  let backendResponded = false;
   try {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
@@ -112,23 +119,22 @@ export async function apiRegister(
       body: JSON.stringify({ username, email, password }),
     });
 
+    backendResponded = true;
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Registration failed" }));
       throw new Error(err.detail ?? "Registration failed");
     }
 
     const data: LoginResult = await res.json();
-    setToken(data.access_token);
-    setStoredUser(data.user);
+    persistSession(data.access_token, data.user);
     return data;
   } catch (error) {
     const isDemoMode = (import.meta as any).env?.VITE_DEMO_MODE === "true";
-    if (isDemoMode) {
+    if (isDemoMode && !backendResponded) {
       console.warn("Backend unreachable, falling back to mock registration.");
       const mockUser: AuthUser = { id: "mock-2", username: username || "New User", email, role: "demo" };
       const mockToken = "mock.jwt.token";
-      setToken(mockToken);
-      setStoredUser(mockUser);
+      persistSession(mockToken, mockUser);
       return { access_token: mockToken, token_type: "bearer", user: mockUser };
     }
     throw error;

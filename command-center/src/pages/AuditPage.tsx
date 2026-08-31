@@ -7,8 +7,8 @@
 
 import { useState, useEffect } from "react";
 import { computeEventHash } from "../lib/auditVerifier";
-
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
+import { apiGet, BROKER_URL } from "../lib/apiClient";
+import { normalizeAuditEvents } from "../lib/apiContracts";
 
 interface AuditEvent {
   id: string;
@@ -49,10 +49,8 @@ export default function AuditPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${BROKER_URL}/api/audit-events?limit=50`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: AuditEvent[] = await res.json();
-        setEvents(data.map(e => ({ ...e, _verifyStatus: "unknown" })));
+        const payload = await apiGet<unknown>(BROKER_URL, "/api/audit-events?limit=50");
+        setEvents(normalizeAuditEvents(payload).map(e => ({ ...e, _verifyStatus: "unknown" })));
       } catch (err) {
         setError(`Could not load audit events: ${err instanceof Error ? err.message : String(err)}`);
       } finally {

@@ -1,8 +1,6 @@
 /** command-center/src/pages/SystemHealthPage.tsx */
 import { useState, useEffect } from "react";
-
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
-const ENGINE_URL = (import.meta as any).env?.VITE_ENGINE_URL ?? "http://localhost:8000";
+import { apiGet, BROKER_URL, ENGINE_URL } from "../lib/apiClient";
 
 interface ServiceCheck { name: string; url: string; endpoint: string; }
 
@@ -18,10 +16,9 @@ interface ServiceState { name: string; status: ServiceStatus; latencyMs?: number
 async function checkService(svc: ServiceCheck): Promise<ServiceState> {
   const start = Date.now();
   try {
-    const res = await fetch(`${svc.url}${svc.endpoint}`, { signal: AbortSignal.timeout(4000) });
+    const data = await apiGet<Record<string, unknown>>(svc.url, svc.endpoint, { timeoutMs: 4000, auth: false });
     const latencyMs = Date.now() - start;
-    const data = await res.json().catch(() => ({}));
-    return { name: svc.name, status: res.ok ? "healthy" : "degraded", latencyMs, detail: data };
+    return { name: svc.name, status: "healthy", latencyMs, detail: data };
   } catch {
     return { name: svc.name, status: "unreachable", latencyMs: Date.now() - start };
   }

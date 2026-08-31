@@ -50,12 +50,12 @@ interface GeoPanelProps {
 
 const getHost = () => (typeof window !== "undefined" && window.location?.hostname ? window.location.hostname : "127.0.0.1");
 
-export function GeoPanel({
-  brokerUrl = (import.meta as Record<string, any>).env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
-  shinyUrl = (import.meta as Record<string, any>).env?.VITE_SHINY_URL ?? `http://${getHost()}:3838`,
-  pollIntervalMs = 3000,
-}: GeoPanelProps): JSX.Element {
-  const hasExplicitShinyUrl = Boolean((import.meta as Record<string, any>).env?.VITE_SHINY_URL);
+export function GeoPanel(props: GeoPanelProps): JSX.Element {
+  const runtimeEnv = (import.meta as Record<string, any>).env;
+  const brokerUrl = props.brokerUrl ?? runtimeEnv?.VITE_BROKER_URL ?? `http://${getHost()}:3000`;
+  const shinyUrl = props.shinyUrl ?? runtimeEnv?.VITE_SHINY_URL ?? `http://${getHost()}:3838`;
+  const pollIntervalMs = props.pollIntervalMs ?? 3000;
+  const hasExplicitShinyUrl = Boolean(props.shinyUrl || runtimeEnv?.VITE_SHINY_URL);
   const [useIframe, setUseIframe] = useState<boolean>(hasExplicitShinyUrl);
   const [iframeError, setIframeError] = useState<boolean>(false);
   const [topology, setTopology] = useState<TopologyData | null>(null);

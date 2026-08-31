@@ -1,7 +1,7 @@
 /**
  * command-center/src/App.test.tsx
  * ────────────────────────────────
- *  & Smoke and Lazy-Loading tests for App component.
+ * Routed command-center smoke tests.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -19,8 +19,11 @@ vi.mock("socket.io-client", () => ({
 
 import App from "./App";
 
-describe("App Dashboard & Lazy Embeds ( & 26)", () => {
+describe("App routed command center", () => {
   beforeEach(() => {
+    localStorage.setItem("gn_token", "mock.jwt.token");
+    localStorage.setItem("gn_user", JSON.stringify({ id: "demo-user", username: "Guest Demo", email: "guest@gridnexus.test", role: "demo" }));
+    window.history.pushState({}, "", "/dashboard");
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -41,45 +44,44 @@ describe("App Dashboard & Lazy Embeds ( & 26)", () => {
     } as Response);
   });
 
-  it("renders the GridNexus brand name in the header", () => {
+  it("renders the GridNexus brand and authenticated dashboard", () => {
     render(<App />);
-    expect(screen.getByText("GridNexus")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /GridNexus Home/i })).toBeInTheDocument();
   });
 
-  it("renders core overview panels without blocking on lazy embeds", () => {
+  it("renders the persisted overview and navigation", () => {
     render(<App />);
-    // Core panels should all be present immediately in the DOM
-    expect(screen.getByRole("region", { name: /coalition map/i })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /negotiation feed/i })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /oracle.*timeline/i })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /system health/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /System Overview/i })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: /Dashboard navigation/i })).toBeInTheDocument();
   });
 
-  it("switches to R Shiny Geospatial view and lazy loads GeoPanel", async () => {
+  it("opens the detailed workflow route", async () => {
     render(<App />);
 
-    const geoTab = screen.getByRole("button", { name: /R Shiny Geospatial/i });
+    const geoTab = screen.getByRole("link", { name: /System Workflow/i });
     fireEvent.click(geoTab);
 
     await waitFor(() => {
-      expect(screen.getByRole("region", { name: /Geospatial Planar Graph Panel/i })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /GridNexus system trace/i })).toBeInTheDocument();
     });
   });
 
-  it("switches to Power BI Analytics view and lazy loads PowerBIPanel", async () => {
+  it("opens the system health route", async () => {
     render(<App />);
 
-    const powerBiTab = screen.getByRole("button", { name: /Power BI Analytics/i });
+    const powerBiTab = screen.getByRole("link", { name: /System Health/i });
     fireEvent.click(powerBiTab);
 
     await waitFor(() => {
-      expect(screen.getByRole("region", { name: /Power BI Audit Analytics Panel/i })).toBeInTheDocument();
+      expect(screen.getByText(/Service readiness probes and connectivity checks/i)).toBeInTheDocument();
     });
   });
 
-  it("shows WebSocket connection-state badge in the header", () => {
+  it("shows WebSocket connection state on the negotiation route", async () => {
     render(<App />);
-    const badge = screen.getByLabelText(/WebSocket status/i);
-    expect(badge).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: /^Negotiations$/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/WS Connected|Connecting|Disconnected/i)).toBeInTheDocument();
+    });
   });
 });

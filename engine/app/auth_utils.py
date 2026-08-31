@@ -14,8 +14,17 @@ from passlib.context import CryptContext
 
 # ── Configuration ────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "gridnexus-dev-secret-change-in-production-please")
+AGENT_SECRET_KEY = os.getenv("ENGINE_JWT_SECRET", "gridnexus-agent-dev-secret-change-in-production")
 ALGORITHM  = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
+
+if os.getenv("GRIDNEXUS_MODE", "simulation").lower() == "production":
+    if len(SECRET_KEY) < 32:
+        raise RuntimeError("JWT_SECRET_KEY must contain at least 32 characters in production.")
+    if len(AGENT_SECRET_KEY) < 32:
+        raise RuntimeError("ENGINE_JWT_SECRET must contain at least 32 characters in production.")
+    if SECRET_KEY == AGENT_SECRET_KEY:
+        raise RuntimeError("User and agent JWT signing keys must be different in production.")
 
 # ── Password hashing ─────────────────────────────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -40,6 +49,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_agent_access_token(agent_id: str, expires_minutes: int = 15) -> str:
+    """Issue a short-lived credential bound to one persisted negotiation agent."""
+    now = datetime.now(tz=timezone.utc)
+    return jwt.encode(
+        {"sub": agent_id, "aud": "gridnexus-broker", "iat": now, "exp": now + timedelta(minutes=expires_minutes)},
+        AGENT_SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
 
 
 def decode_token(token: str) -> Optional[dict]:

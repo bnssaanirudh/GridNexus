@@ -48,10 +48,10 @@ export class StabilityGate {
         });
         
         for (const agent of agents) {
-          const mId = agent.microgridId;
-          coalition.push(mId);
+          const agentId = agent.id;
+          coalition.push(agentId);
           // In reality, broker would need the decryption key to get true costs.
-          profiles[mId] = agent.type === "SELLER" 
+          profiles[agentId] = agent.type === "SELLER"
             ? { type: "seller", generation_cost: 2.0, available_capacity: 100.0, outside_option: 0.0 }
             : { type: "buyer", energy_value: 10.0, demand: 100.0, outside_option: 0.0 };
         }

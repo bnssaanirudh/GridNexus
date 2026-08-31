@@ -6,8 +6,8 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
+import { apiGet, BROKER_URL } from "../lib/apiClient";
+import { normalizeTopology } from "../lib/apiContracts";
 
 interface Bus { id: string; externalCode?: string; voltageLevelKv: number; latitude?: number; longitude?: number; }
 interface Line { id: string; fromBusId: string; toBusId: string; thermalLimitKw: number; resistance: number; reactance: number; active: boolean; utilization?: number; }
@@ -37,9 +37,9 @@ export default function GridPage() {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    fetch(`${BROKER_URL}/api/topology`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(setTopology)
+    apiGet<unknown>(BROKER_URL, "/api/topology")
+      .then(normalizeTopology)
+      .then((data) => setTopology(data as Topology))
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
   }, []);

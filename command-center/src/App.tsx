@@ -24,6 +24,8 @@ import {
   apiLogin,
   apiRegister,
   logout as doLogout,
+  apiGetMe,
+  getToken,
 } from "./lib/auth";
 
 // Lazy-loaded dashboard pages
@@ -59,10 +61,23 @@ export default function App() {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser);
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      const stored = getStoredUser();
-      if (stored) setUser(stored);
+    if (!isAuthenticated()) {
+      setUser(null);
+      return;
     }
+    const stored = getStoredUser();
+    if (stored) setUser(stored);
+    if (getToken() === "mock.jwt.token") return;
+
+    let active = true;
+    void apiGetMe()
+      .then((verified) => { if (active) setUser(verified); })
+      .catch(() => {
+        if (!active) return;
+        doLogout();
+        setUser(null);
+      });
+    return () => { active = false; };
   }, []);
 
   const login = async (username: string, password: string) => {

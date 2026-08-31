@@ -6,6 +6,8 @@
 
 import { io, type Socket } from "socket.io-client";
 import { wsConfig } from "../theme/tokens";
+import { BROKER_URL } from "./apiClient";
+import { getToken } from "./auth";
 
 export type ConnectionState = "connecting" | "connected" | "disconnected";
 export type WsEventHandler<T = unknown> = (data: T) => void;
@@ -26,14 +28,13 @@ export interface WsClient {
   destroy(): void;
 }
 
-const getHost = () => (typeof window !== "undefined" && window.location?.hostname ? window.location.hostname : "127.0.0.1");
-
 export function createWsClient(
-  brokerUrl: string = (import.meta as Record<string, any>).env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
+  brokerUrl: string = BROKER_URL,
 ): WsClient {
   let state: ConnectionState = "connecting";
   let backoffMs: number = wsConfig.initialBackoffMs;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let destroyed = false;
 
   const stateListeners = new Set<(s: ConnectionState) => void>();
   const eventListeners = new Set<(ev: NegotiationEvent) => void>();
@@ -55,12 +56,15 @@ export function createWsClient(
     reconnection: false,
     transports: ["websocket", "polling"],
     timeout: 5_000,
+    auth: { token: getToken() ?? undefined },
   });
 
   // Forward all events to listeners
   const FORWARDED_EVENTS = [
-    "round_update", "negotiation_start", "negotiation_end", "belief_update",
+    "status", "round_update", "negotiation_start", "negotiation_end",
+    "negotiation_complete", "belief_update", "belief_update_pending",
     "oracle_signal", "stability_check", "grid_certificate", "settlement",
+    "your_turn", "settlement_failed", "protocol_error", "grid_rejected", "stability_rejected",
     "ORACLE_SIGNAL", "BELIEF_UPDATE", "LLM_PROPOSAL", "SCHEMA_VALIDATION",
     "ECONOMIC_VALIDATION", "RESOURCE_CHECK", "DQN_SAFETY", "STABILITY_CHECK",
     "GRID_CERTIFICATION", "SETTLEMENT_COMMITTED",
@@ -78,19 +82,21 @@ export function createWsClient(
   });
 
   function scheduleReconnect(): void {
+    if (destroyed) return;
     clearReconnectTimer();
     setState("disconnected");
     const delay = Math.min(backoffMs, wsConfig.maxBackoffMs);
     reconnectTimer = setTimeout(() => {
+      if (destroyed) return;
       setState("connecting");
       socket.connect();
       backoffMs = Math.min(backoffMs * wsConfig.backoffMultiplier, wsConfig.maxBackoffMs);
     }, delay);
   }
 
-  socket.on("connect", () => { backoffMs = wsConfig.initialBackoffMs; setState("connected"); });
-  socket.on("disconnect", () => { scheduleReconnect(); });
-  socket.on("connect_error", () => { scheduleReconnect(); });
+  socket.on("connect", () => { if (!destroyed) { backoffMs = wsConfig.initialBackoffMs; setState("connected"); } });
+  socket.on("disconnect", () => scheduleReconnect());
+  socket.on("connect_error", () => scheduleReconnect());
 
   return {
     on<T>(event: string, handler: WsEventHandler<T>): void {
@@ -111,7 +117,9 @@ export function createWsClient(
       return state;
     },
     destroy(): void {
+      destroyed = true;
       clearReconnectTimer();
+      (socket as Socket & { removeAllListeners?: () => void }).removeAllListeners?.();
       stateListeners.clear();
       eventListeners.clear();
       socket.disconnect();

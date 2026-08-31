@@ -8,7 +8,7 @@
 
 import { useState, FormEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { apiLogin, apiRegister, useAuth, setToken } from "../lib/auth";
+import { apiLogin, apiRegister, useAuth, persistSession } from "../lib/auth";
 
 /* ── Password strength indicator ────────────────────────────────────────── */
 function PasswordStrength({ password }: { password: string }) {
@@ -298,8 +298,9 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setToken("mock.jwt.token");
-                  setUser({ id: "demo-user", username: "Guest Demo", email: "guest@gridnexus.test", role: "demo" });
+                  const guest = { id: "demo-user", username: "Guest Demo", email: "guest@gridnexus.test", role: "demo" };
+                  persistSession("mock.jwt.token", guest);
+                  setUser(guest);
                   navigate("/dashboard");
                 }}
                 style={{

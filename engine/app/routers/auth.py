@@ -20,12 +20,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.deps import get_db
-from app.models import User
+from app.models import Agent, User
 from app.auth_utils import (
     hash_password,
     verify_password,
     create_access_token,
     decode_token,
+    create_agent_access_token,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -46,6 +47,13 @@ class UserOut(BaseModel):
     username: str
     email:    str
     role:     str
+
+class AgentTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    agent_id: str
+    expires_in: int = 900
+
 
     model_config = {"from_attributes": True}
 
@@ -117,7 +125,7 @@ async def register(
     await db.commit()
     await db.refresh(new_user)
 
-    token = create_access_token({"sub": new_user.id})
+    token = create_access_token({"sub": new_user.id, "email": new_user.email, "role": new_user.role})
     return TokenResponse(
         access_token=token,
         user=UserOut.model_validate(new_user),
@@ -145,13 +153,38 @@ async def login(
             detail="Account is deactivated.",
         )
 
-    token = create_access_token({"sub": user.id})
+    token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
     return TokenResponse(
         access_token=token,
         user=UserOut.model_validate(user),
     )
 
 
+
+@router.post("/agent-token/{agent_id}", response_model=AgentTokenResponse)
+async def issue_agent_token(
+    agent_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Issue a short-lived broker credential to an authorized grid operator."""
+    if current_user.role not in {"ADMIN", "GRID_OPERATOR"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators and grid operators may issue agent credentials.",
+        )
+
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found.",
+        )
+
+    return AgentTokenResponse(
+        access_token=create_agent_access_token(agent_id),
+        agent_id=agent_id,
+    )
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user)):
     """Return the current authenticated user's profile."""

@@ -1,8 +1,7 @@
 /** command-center/src/pages/DERAssetsPage.tsx */
 import { useState, useEffect } from "react";
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
-
-interface DER { id: string; microgridId: string; type: string; ratedPowerKw: number; maxPowerKw: number; minPowerKw: number; efficiency: number; energyCapacityKwh?: number; }
+import { apiGet, BROKER_URL } from "../lib/apiClient";
+import { normalizeDers, type DerDto as DER } from "../lib/apiContracts";
 
 const DER_TYPE_ICON: Record<string, string> = { SOLAR: "☀", WIND: "💨", BATTERY: "🔋", EV: "🚗", FLEXIBLE_LOAD: "⚡", OTHER: "◈" };
 
@@ -12,7 +11,7 @@ export default function DERAssetsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${BROKER_URL}/api/ders`).then(r => r.json()).then(setDers).catch(e => setError(String(e))).finally(() => setLoading(false));
+    apiGet<unknown>(BROKER_URL, "/api/ders").then(normalizeDers).then(setDers).catch(e => setError(String(e))).finally(() => setLoading(false));
   }, []);
 
   const byType = ders.reduce<Record<string, DER[]>>((acc, d) => ({ ...acc, [d.type]: [...(acc[d.type] ?? []), d] }), {});
@@ -58,14 +57,14 @@ export default function DERAssetsPage() {
               {ders.map(d => (
                 <tr key={d.id}>
                   <td className="text-primary">{DER_TYPE_ICON[d.type] ?? "◈"} {d.type}</td>
-                  <td className="font-mono">{d.microgridId.slice(0, 8)}…</td>
-                  <td className="text-primary">{d.ratedPowerKw}</td>
-                  <td>{d.minPowerKw}</td>
-                  <td>{d.maxPowerKw}</td>
+                  <td className="font-mono">{d.microgridId ? `${d.microgridId.slice(0, 8)}…` : "—"}</td>
+                  <td className="text-primary">{d.ratedPowerKw ?? "—"}</td>
+                  <td>{d.minPowerKw ?? "—"}</td>
+                  <td>{d.maxPowerKw ?? "—"}</td>
                   <td>
                     <div className="conf-bar-wrap">
-                      <div className="conf-bar-track"><div className="conf-bar-fill conf-bar-fill--high" style={{ width: `${d.efficiency * 100}%` }} /></div>
-                      <div className="conf-label">{(d.efficiency * 100).toFixed(0)}%</div>
+                      <div className="conf-bar-track"><div className="conf-bar-fill conf-bar-fill--high" style={{ width: `${(d.efficiency ?? 0) * 100}%` }} /></div>
+                      <div className="conf-label">{d.efficiency == null ? "—" : `${(d.efficiency * 100).toFixed(0)}%`}</div>
                     </div>
                   </td>
                   <td>{d.energyCapacityKwh ?? <span style={{ color: "var(--fg-muted)" }}>N/A</span>}</td>

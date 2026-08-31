@@ -8,8 +8,6 @@ import { useState, useEffect, useRef } from "react";
 import { createWsClient, type ConnectionState } from "../lib/wsClient";
 import type { NegotiationEvent } from "../lib/wsClient";
 
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
-
 const PIPELINE_STAGES = [
   "ORACLE_SIGNAL", "BELIEF_UPDATE", "LLM_PROPOSAL", "SCHEMA_VALIDATION",
   "ECONOMIC_VALIDATION", "RESOURCE_CHECK", "DQN_SAFETY", "STABILITY_CHECK",
@@ -57,21 +55,28 @@ function PipelineTimeline({ events }: { events: NegotiationEvent[] }) {
 }
 
 export default function NegotiationFeedPage() {
-  const wsClientRef = useRef(createWsClient(BROKER_URL));
+  const wsClientRef = useRef<ReturnType<typeof createWsClient> | null>(null);
   const [connState, setConnState] = useState<ConnectionState>("connecting");
   const [eventsByNeg, setEventsByNeg] = useState<Record<string, NegotiationEvent[]>>({});
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    const client = wsClientRef.current;
+    const client = createWsClient();
+    wsClientRef.current = client;
     const unsub = client.onStateChange(setConnState);
     const unsubEv = client.onEvent((ev: NegotiationEvent) => {
       setEventsByNeg(prev => {
         const negId = ev.negotiationId ?? "unknown";
-        return { ...prev, [negId]: [...(prev[negId] ?? []), ev] };
+        const boundedEvents = [...(prev[negId] ?? []), ev].slice(-250);
+        return { ...prev, [negId]: boundedEvents };
       });
     });
-    return () => { unsub(); unsubEv(); client.destroy(); };
+    return () => {
+      unsub();
+      unsubEv();
+      client.destroy();
+      wsClientRef.current = null;
+    };
   }, []);
 
   const negIds = Object.keys(eventsByNeg).sort().reverse();

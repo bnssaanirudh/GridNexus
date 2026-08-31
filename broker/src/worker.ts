@@ -3,6 +3,7 @@ import { connection, StabilityJobPayload } from "./queues/index.js";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import { isProduction } from "./config.js";
+import "./workers/oracleBroadcastWorker.js";
 
 dotenv.config();
 
@@ -44,9 +45,14 @@ const stabilityWorker = new Worker<StabilityJobPayload>(
       if (!fetchResponse.ok) {
         throw new Error(`Engine returned ${fetchResponse.status}`);
       }
-      const data = (await fetchResponse.json()) as { isCoreStable: boolean; margin: number };
-      isStable = data.isCoreStable;
-      margin = data.margin;
+      const data = (await fetchResponse.json()) as { isStable?: boolean; isCoreStable?: boolean; margin?: number };
+      const stableResult = data.isStable ?? data.isCoreStable;
+      const marginResult = data.margin;
+      if (typeof stableResult !== "boolean" || typeof marginResult !== "number" || !Number.isFinite(marginResult)) {
+        throw new Error("Engine returned an invalid stability response.");
+      }
+      isStable = stableResult;
+      margin = marginResult;
     } catch (e) {
       if (isProduction()) {
         throw new Error(`Engine verification failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -58,13 +64,22 @@ const stabilityWorker = new Worker<StabilityJobPayload>(
     }
 
     // Write to stabilitychecks via Prisma
-    const check = await prisma.stabilityCheck.create({
-      data: {
-        isStable,
-        margin,
-        violatingDeviation: job.data.coalition ? null : null, // We'll update this in the worker logic if needed, but  says return it
-      },
-    });
+    let check: { id: string };
+    try {
+      check = await prisma.stabilityCheck.create({
+        data: {
+          isStable,
+          margin,
+          violatingDeviation: null,
+        },
+      });
+    } catch (error) {
+      if (isProduction()) throw error;
+      console.warn("[Mock] Stability result persistence unavailable in simulation mode.");
+      check = {
+        id: `simulation-${job.id ?? Date.now()}`,
+      };
+    }
 
     return { checkId: check.id, isStable, margin };
   },

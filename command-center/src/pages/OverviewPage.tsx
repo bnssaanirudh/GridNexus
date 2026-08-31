@@ -7,8 +7,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
+import { apiGet, BROKER_URL } from "../lib/apiClient";
 
 interface HealthData {
   status?: string;
@@ -73,12 +72,17 @@ export default function OverviewPage() {
     const fetchData = async () => {
       try {
         const [healthRes, metricsRes] = await Promise.allSettled([
-          fetch(`${BROKER_URL}/health`).then(r => r.json()),
-          fetch(`${BROKER_URL}/api/metrics/overview`).then(r => r.json()),
+          apiGet<HealthData>(BROKER_URL, "/health", { auth: false }),
+          apiGet<Record<string, unknown>>(BROKER_URL, "/api/metrics/overview"),
         ]);
 
         if (healthRes.status === "fulfilled") setHealth(healthRes.value);
         if (metricsRes.status === "fulfilled") setMetrics(metricsRes.value);
+        if (healthRes.status === "rejected" && metricsRes.status === "rejected") {
+          setError("Failed to load dashboard data.");
+        } else {
+          setError(null);
+        }
       } catch {
         setError("Failed to load dashboard data.");
       } finally {

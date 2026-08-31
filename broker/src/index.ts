@@ -13,16 +13,13 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import { createServer } from "http";
 import { randomUUID } from "crypto";
-import Redis from "ioredis";
 import { setupNegotiationNamespace } from "./ws/negotiate";
 import { Server } from "socket.io";
-import { scheduleOracleBroadcast } from "./queues/oracleBroadcastQueue";
-import { scheduleIntegrityCheck } from "./queues/integrityQueue";
 import { authRouter } from "./routes/auth.js";
 import { apiRouter } from "./routes/api.js";
 import { healthRouter } from "./routes/health.js";
-import { disconnectPrisma, prisma } from "./db/prisma.js";
-import { getGridNexusMode, isProduction } from "./config.js";
+import { disconnectPrisma } from "./db/prisma.js";
+import { isProduction } from "./config.js";
 
 
 const app = express();
@@ -79,156 +76,6 @@ app.use("/api", apiRouter);
 // Routes
 // ---------------------------------------------------------------------------
 
-/**
- * Oracle signal feed – returns the 50 most recent oracle signals.
- * Used by the command-center OracleTimeline component.
- * ASSUMPTION : A lightweight read API is acceptable here; heavy
- * analytical queries belong behind a dedicated analytics service.
- */
-app.get("/api/oracle/signals", async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const signals = [
-      { id: "sig1", signalData: { type: "PRICE", value: 45.2 }, createdAt: new Date().toISOString() },
-      { id: "sig2", signalData: { type: "WEATHER", temp: 22.5 }, createdAt: new Date(Date.now() - 3600000).toISOString() }
-    ];
-    res.json({ signals });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch oracle signals" });
-  }
-});
-
-
-/**
- * Energy Transfers feed – returns recent settled transfers from Postgres audit log.
- * Used by Power BI analytics and geospatial utilization trackers.
- */
-app.get("/api/energy-transfers", async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const transfers = [
-      { id: "tx1", from: "Agent A", to: "Agent B", amount: 150.5, timestamp: new Date().toISOString() }
-    ];
-    res.json({ transfers });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch energy transfers" });
-  }
-});
-
-
-
-/**
- * Aggregated Analytics API matching the Power BI DirectQuery specification.
- * Used for live charts in command-center PowerBIPanel when standalone.
- */
-app.get("/api/analytics", async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const { PrismaClient } = await import("@prisma/client");
-    const p = new PrismaClient();
-
-    const [settlementAgg, stabilityAgg, oracleCount] = await Promise.all([
-      p.settlement.aggregate({
-        where: { status: "COMMITTED" },
-        _sum: { energyKwh: true },
-        _avg: { pricePerKwh: true },
-        _count: { id: true },
-      }),
-      p.stabilityCheck.aggregate({
-        _count: { id: true },
-        _avg: { margin: true },
-      }),
-      p.oracleSignal.count(),
-    ]);
-
-    const stableCount = await p.stabilityCheck.count({ where: { isStable: true } });
-    const totalStability = stabilityAgg._count.id ?? 0;
-    const totalKwh = Number(settlementAgg._sum.energyKwh ?? 0);
-    const avgPrice = Number(settlementAgg._avg.pricePerKwh ?? 0);
-    const totalVolume = totalKwh * avgPrice;
-
-    await p.$disconnect();
-
-    res.json({
-      summary: {
-        totalTradedKwh: totalKwh,
-        totalVolumeUsd: totalVolume,
-        avgPricePerKwh: avgPrice,
-        stabilityPassRatePct: totalStability > 0
-          ? (stableCount / totalStability) * 100
-          : 0,
-        avgStabilityMargin: Number(stabilityAgg._avg.margin ?? 0),
-        totalStabilityChecks: totalStability,
-        totalOracleBroadcasts: oracleCount,
-      },
-      recentTransfersCount: settlementAgg._count.id ?? 0,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.error("[Analytics] Failed to aggregate:", err);
-    res.status(500).json({ error: "Failed to compute analytics" });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Server startup (only when run directly, not when imported for testing)
-// ---------------------------------------------------------------------------
-
-app.get("/api/ders", async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const ders = [
-      { id: "der1", microgridId: "mg1", ratedPowerKw: 50, type: "SOLAR" },
-      { id: "der2", microgridId: "mg1", ratedPowerKw: 100, type: "BATTERY" }
-    ];
-    res.json(ders);
-  } catch(e) { res.status(500).json({error: String(e)}); }
-});
-
-app.get("/api/topology", async (_req: Request, res: Response): Promise<void> => {
-  res.json({
-    buses: [
-      { id: "n1", externalCode: "SUB1", voltageLevelKv: 110, latitude: 34.052, longitude: -118.243 },
-      { id: "n2", externalCode: "COM1", voltageLevelKv: 33, latitude: 34.055, longitude: -118.240 },
-      { id: "n3", externalCode: "IND1", voltageLevelKv: 33, latitude: 34.050, longitude: -118.235 }
-    ],
-    lines: [
-      { id: "l1", fromBusId: "n1", toBusId: "n2", thermalLimitKw: 5000, resistance: 0.01, reactance: 0.05, active: true, utilization: 45 },
-      { id: "l2", fromBusId: "n1", toBusId: "n3", thermalLimitKw: 8000, resistance: 0.015, reactance: 0.06, active: true, utilization: 88 }
-    ]
-  });
-});
-
-app.get("/api/coalitions", async (_req: Request, res: Response): Promise<void> => {
-  res.json([
-    { id: "c1", name: "North Substation", value: 1200, members: 45, stability: 0.92 },
-    { id: "c2", name: "Downtown Commercial", value: 3400, members: 120, stability: 0.88 }
-  ]);
-});
-
-app.get("/api/settlements", async (_req: Request, res: Response): Promise<void> => {
-  res.json([
-    { id: "s1", amount: 45.2, buyer: "Agent A", seller: "Agent B", timestamp: new Date().toISOString() }
-  ]);
-});
-
-app.get("/api/audit-events", async (_req: Request, res: Response): Promise<void> => {
-  res.json([
-    { id: "evt1", type: "SETTLEMENT_COMMITTED", hash: "a3f9c2d1b...2c1d", verified: true, timestamp: new Date().toISOString() },
-    { id: "evt2", type: "GRID_CERTIFIED", hash: "8e4b1a7d...9f3c", verified: true, timestamp: new Date(Date.now() - 10000).toISOString() }
-  ]);
-});
-
-app.get("/api/metrics/overview", async (_req: Request, res: Response): Promise<void> => {
-  res.json({
-    activeNegotiations: 24,
-    energyTradedKwh: 42500,
-    avgPricePerKwh: 0.114,
-    committedSettlements: 156,
-    gridPassRate: 98.5,
-    coalitionStability: 92.4,
-    oracleSignals: 142,
-
-    failedNegotiations: 3
-  });
-});
-
 app.use((error: unknown, req: Request, res: Response, _next: express.NextFunction): void => {
   const requestId = String(res.getHeader("x-request-id") ?? "unknown");
   console.error("[Broker] Request failed", { requestId, method: req.method, path: req.path, error });
@@ -256,15 +103,44 @@ setupNegotiationNamespace(io);
 if (process.env.NODE_ENV !== "test") {
   server.listen(PORT, () => {
     console.log(`GridNexus Broker listening on port ${PORT}`);
-    // Start the oracle broadcast scheduler 
-    scheduleOracleBroadcast().catch((err) =>
-      console.error("[Broker] Failed to schedule oracle broadcast:", err)
-    );
-    // Start the integrity check scheduler 
-    scheduleIntegrityCheck().catch((err) =>
-      console.error("[Broker] Failed to schedule integrity check:", err)
-    );
+    // Queue modules are loaded only for a running service. App imports used by
+    // unit tests and tooling stay side-effect free and never open Redis sockets.
+    void Promise.all([
+      import("./queues/oracleBroadcastQueue.js"),
+      import("./queues/integrityQueue.js"),
+    ]).then(([oracle, integrity]) => Promise.all([
+      oracle.scheduleOracleBroadcast(),
+      integrity.scheduleIntegrityCheck(),
+    ])).catch((err) => {
+      console.error("[Broker] Failed to initialize background schedules:", err);
+    });
   });
+
+  let shuttingDown = false;
+  const shutdown = (signal: string): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log("[Broker] Received " + signal + "; draining connections.");
+    const forceExit = setTimeout(() => {
+      console.error("[Broker] Graceful shutdown timed out.");
+      process.exit(1);
+    }, 10_000);
+    forceExit.unref();
+    io.close(() => {
+      server.close(async () => {
+        try {
+          await disconnectPrisma();
+          clearTimeout(forceExit);
+          process.exit(0);
+        } catch (error) {
+          console.error("[Broker] Shutdown cleanup failed.", error);
+          process.exit(1);
+        }
+      });
+    });
+  };
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
 }
 
 

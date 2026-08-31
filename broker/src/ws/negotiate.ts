@@ -1,11 +1,12 @@
 import { Server, Socket } from "socket.io";
-import { createHmac } from "crypto";
+import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { commitSettlement } from "../services/settlementService.js";
 import { StabilityGate } from "../services/stabilityGate.js";
 import { GridGate } from "../services/gridGate.js";
 import { hasAgentPendingBeliefUpdate } from "../services/beliefUpdateService.js";
 import { isProduction } from "../config.js";
+import { verifySocketToken } from "../middleware/auth.js";
 
 const prisma = new PrismaClient();
 
@@ -128,20 +129,12 @@ function verifyAgentJWT(token: string): string {
   const secret = process.env.ENGINE_JWT_SECRET;
   if (!secret) throw new Error("ENGINE_JWT_SECRET not configured on broker");
 
-  const parts = token.split(".");
-  if (parts.length !== 3) throw new Error("Malformed JWT");
-
-  const sig = createHmac("sha256", secret)
-    .update(`${parts[0]}.${parts[1]}`)
-    .digest("base64url");
-  if (sig !== parts[2]) throw new Error("Invalid token signature");
-
-  const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-  const now = Math.floor(Date.now() / 1000);
-  if (payload.exp && payload.exp < now) throw new Error("Token expired");
-  if (!payload.sub) throw new Error("Token missing sub claim");
-
-  return payload.sub as string;
+  const payload = jwt.verify(token, secret, {
+    algorithms: ["HS256"],
+    audience: "gridnexus-broker",
+  });
+  if (typeof payload === "string" || !payload.sub) throw new Error("Token missing sub claim");
+  return payload.sub;
 }
 
 export function setupNegotiationNamespace(io: Server) {
@@ -155,6 +148,7 @@ export function setupNegotiationNamespace(io: Server) {
   nsp.use((socket, next) => {
     if (process.env.NODE_ENV === "test") {
       socket.data.agentId = (socket.handshake.query.agentId as string) ?? "test-agent";
+      socket.data.observer = false;
       return next();
     }
 
@@ -164,8 +158,17 @@ export function setupNegotiationNamespace(io: Server) {
     }
 
     try {
-      socket.data.agentId = verifyAgentJWT(token);
-      next();
+      try {
+        socket.data.agentId = verifyAgentJWT(token);
+        socket.data.observer = false;
+        next();
+      } catch {
+        const viewer = verifySocketToken(token);
+        socket.data.agentId = viewer.userId;
+        socket.data.observer = true;
+        socket.data.viewerRole = viewer.role;
+        next();
+      }
     } catch (err) {
       next(new Error(`AUTH_FAILED: ${(err as Error).message}`));
     }
@@ -176,7 +179,12 @@ export function setupNegotiationNamespace(io: Server) {
     
     // Register agent
     const agentId = socket.data.agentId;
-    if (agentId) {
+    if (socket.data.observer) {
+      socket.join("observers");
+      for (const negotiationId of activeNegotiations.keys()) socket.join(negotiationId);
+    }
+
+    if (agentId && !socket.data.observer) {
       connectedAgents.set(agentId, socket.id);
       console.log(`[WS] Registered agent: ${agentId}`);
     }
@@ -185,13 +193,20 @@ export function setupNegotiationNamespace(io: Server) {
       // agentId is taken from the JWT-verified socket.data.agentId.
       // Client-supplied agentId is intentionally ignored to prevent spoofing.
       const verifiedId = socket.data.agentId;
-      if (verifiedId) {
+      if (verifiedId && !socket.data.observer) {
         connectedAgents.set(verifiedId, socket.id);
         console.log(`[WS] Re-registered agent: ${verifiedId}`);
       }
     });
 
     socket.on("start_negotiation", async (raw: unknown) => {
+      if (socket.data.observer) {
+        socket.emit("protocol_error", {
+          code: "FORBIDDEN",
+          message: "Dashboard observers cannot start negotiations.",
+        });
+        return;
+      }
       const data = parseNegotiationInit(raw);
       if (!data) {
         socket.emit("protocol_error", {
@@ -309,6 +324,7 @@ export function setupNegotiationNamespace(io: Server) {
           }
         }
         socket.join(negId);
+        nsp.in("observers").socketsJoin(negId);
         nsp.to(negId).emit("status", {
           message: "Negotiation started",
           negotiationId: negId,
@@ -325,6 +341,13 @@ export function setupNegotiationNamespace(io: Server) {
     });
 
     socket.on("agent_action", async (raw: unknown) => {
+      if (socket.data.observer) {
+        socket.emit("protocol_error", {
+          code: "FORBIDDEN",
+          message: "Dashboard observers cannot submit agent actions.",
+        });
+        return;
+      }
       if (!isRecord(raw) || !validId(raw.negotiationId, MAX_NEGOTIATION_ID_LENGTH)) {
         socket.emit("protocol_error", {
           code: "INVALID_ACTION",
