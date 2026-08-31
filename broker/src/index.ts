@@ -12,10 +12,17 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
 import { createServer } from "http";
+import { randomUUID } from "crypto";
+import Redis from "ioredis";
 import { setupNegotiationNamespace } from "./ws/negotiate";
 import { Server } from "socket.io";
 import { scheduleOracleBroadcast } from "./queues/oracleBroadcastQueue";
 import { scheduleIntegrityCheck } from "./queues/integrityQueue";
+import { authRouter } from "./routes/auth.js";
+import { apiRouter } from "./routes/api.js";
+import { healthRouter } from "./routes/health.js";
+import { disconnectPrisma, prisma } from "./db/prisma.js";
+import { getGridNexusMode, isProduction } from "./config.js";
 
 
 const app = express();
@@ -29,58 +36,48 @@ const PORT = parseInt(process.env.BROKER_PORT ?? "3000", 10);
 const _rawOrigins = (process.env.CORS_ORIGINS ?? "").trim();
 const ALLOWED_ORIGINS: string[] = _rawOrigins
   ? _rawOrigins.split(",").map((o) => o.trim()).filter(Boolean)
-  : [];
+  : isProduction() ? [] : ["http://localhost:5173", "http://127.0.0.1:5173"];
 
 app.use(cors({ origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : false }));
-app.use(express.json());
+app.disable("x-powered-by");
+app.use(express.json({ limit: "256kb" }));
+app.use((req, res, next) => {
+  const requestId = String(req.headers["x-request-id"] ?? randomUUID());
+  res.setHeader("x-request-id", requestId);
+  res.setHeader("x-content-type-options", "nosniff");
+  res.setHeader("x-frame-options", "DENY");
+  res.setHeader("referrer-policy", "no-referrer");
+  res.setHeader("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("content-security-policy", "default-src 'none'; frame-ancestors 'none'");
+  next();
+});
+
+function validateRuntimeConfiguration(): void {
+  if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65_535) {
+    throw new Error("BROKER_PORT must be a valid TCP port.");
+  }
+  if (!isProduction()) return;
+  const required = ["DATABASE_URL", "REDIS_URL", "ENGINE_URL", "JWT_SECRET", "ENGINE_JWT_SECRET", "ENCRYPTION_KEY", "CORS_ORIGINS"];
+  const missing = required.filter((name) => !(process.env[name] ?? "").trim());
+  if (missing.length) throw new Error("Production configuration is missing: " + missing.join(", "));
+  if ((process.env.JWT_SECRET ?? "").length < 32 || (process.env.ENGINE_JWT_SECRET ?? "").length < 32) {
+    throw new Error("Production JWT secrets must each be at least 32 characters.");
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(process.env.ENCRYPTION_KEY ?? "")) {
+    throw new Error("ENCRYPTION_KEY must be exactly 64 hexadecimal characters.");
+  }
+}
+
+validateRuntimeConfiguration();
+
+app.use(healthRouter);
+app.use("/auth", authRouter);
+app.use("/api", apiRouter);
+
 
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
-
-/** Liveness / readiness probe. */
-app.get("/health", async (_req: Request, res: Response): Promise<void> => {
-  let dbConnected = false;
-  let redisConnected = false;
-  let engineReachable = false;
-
-  try {
-    const { PrismaClient } = await import("@prisma/client");
-    const p = new PrismaClient();
-    await p.$queryRaw`SELECT 1`;
-    dbConnected = true;
-    await p.$disconnect();
-  } catch (e) {}
-
-  try {
-    const redisModule = await import("ioredis");
-    const RedisClient = redisModule.default || redisModule;
-    const redis = new (RedisClient as any)(process.env.REDIS_URL || "redis://localhost:6379");
-    await redis.ping();
-    redisConnected = true;
-    redis.disconnect();
-  } catch (e) {}
-
-  try {
-    const engineUrl = process.env.ENGINE_URL || "http://engine:8000";
-    const r = await fetch(`${engineUrl}/health`);
-    if (r.ok) engineReachable = true;
-  } catch (e) {
-    try {
-      const engineUrl = "http://127.0.0.1:8000";
-      const r = await fetch(`${engineUrl}/health`);
-      if (r.ok) engineReachable = true;
-    } catch(err) {}
-  }
-
-  res.json({
-    status: "ok",
-    dbConnected,
-    redisConnected,
-    engineReachable,
-    mode: process.env.NODE_ENV || "production"
-  });
-});
 
 /**
  * Oracle signal feed – returns the 50 most recent oracle signals.
@@ -227,7 +224,19 @@ app.get("/api/metrics/overview", async (_req: Request, res: Response): Promise<v
     gridPassRate: 98.5,
     coalitionStability: 92.4,
     oracleSignals: 142,
+
     failedNegotiations: 3
+  });
+});
+
+app.use((error: unknown, req: Request, res: Response, _next: express.NextFunction): void => {
+  const requestId = String(res.getHeader("x-request-id") ?? "unknown");
+  console.error("[Broker] Request failed", { requestId, method: req.method, path: req.path, error });
+  if (res.headersSent) return;
+  res.status(500).json({
+    error: "INTERNAL_SERVER_ERROR",
+    message: "The request could not be completed.",
+    requestId,
   });
 });
 

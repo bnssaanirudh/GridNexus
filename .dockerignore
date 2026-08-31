@@ -47,3 +47,8 @@ scratch/
 *.md
 *.png
 *.svg
+# Large local datasets and demo recordings are runtime mounts, never image inputs
+opsd-household_data-2020-04-15/
+india_spectral_tmy.h5
+*.mp4
+for ui/

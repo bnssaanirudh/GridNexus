@@ -8,14 +8,28 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package manifests
-COPY package.json package-lock.json* ./
+# Copy the monorepo lockfile and selected workspace manifest.
+COPY package.json package-lock.json ./
+COPY command-center/package.json ./command-center/package.json
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Install exactly the committed dependency graph.
+RUN npm ci --workspace command-center --include-workspace-root=false --legacy-peer-deps
 
-# Copy source code and build configs
-COPY . .
+# Copy source code and build configs without the rest of the monorepo.
+COPY command-center ./command-center
+
+WORKDIR /app/command-center
+
+# Vite values are compiled into the static bundle. Production defaults use the
+# Nginx same-origin proxy instead of unreachable browser-local service ports.
+ARG VITE_BROKER_URL=""
+ARG VITE_ENGINE_URL="/engine"
+ARG VITE_API_URL="/engine"
+ARG VITE_GRIDNEXUS_MODE="production"
+ENV VITE_BROKER_URL=${VITE_BROKER_URL} \
+    VITE_ENGINE_URL=${VITE_ENGINE_URL} \
+    VITE_API_URL=${VITE_API_URL} \
+    VITE_GRIDNEXUS_MODE=${VITE_GRIDNEXUS_MODE}
 
 # Build production bundle to /app/dist
 RUN npm run build
@@ -27,7 +41,7 @@ FROM nginx:1.27-alpine-slim AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy compiled static assets from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/command-center/dist /usr/share/nginx/html
 
 # Configure unprivileged execution directories
 RUN touch /var/run/nginx.pid && \

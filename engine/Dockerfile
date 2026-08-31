@@ -14,14 +14,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency specifications
-COPY pyproject.toml ./
+# Copy the lockfile first so dependency layers are deterministic and cacheable.
+COPY pyproject.toml poetry.lock ./
 
-# Install CPU PyTorch and production dependencies directly (strictly avoids 8GB+ CUDA packages)
+# Export exact versions from poetry.lock. PyTorch is deliberately installed from
+# the CPU index; CUDA-only transitive packages are excluded from this service.
 RUN python3 -m venv /app/.venv && \
+    /app/.venv/bin/pip install --no-cache-dir poetry==2.1.4 poetry-plugin-export==1.9.0 && \
+    /app/.venv/bin/poetry check --lock && \
+    /app/.venv/bin/poetry export --only main --without-hashes --format requirements.txt --output requirements.lock.txt && \
+    sed -i '/^torch==/d; /^cuda-/d' requirements.lock.txt && \
     /app/.venv/bin/pip install --no-cache-dir torch==2.4.0 --index-url https://download.pytorch.org/whl/cpu && \
-    /app/.venv/bin/python -c "import tomllib; data = tomllib.load(open('pyproject.toml', 'rb'))['tool']['poetry']['dependencies']; lines = [f'{k}=={v}' if isinstance(v, str) and not v.startswith('^') and not v.startswith('>') and not v.startswith('<') else (f'{k}{v}' if isinstance(v, str) and (v.startswith('>=') or v.startswith('<')) else f'{k}') for k, v in data.items() if k != 'python']; open('requirements.txt', 'w').write('\n'.join(lines))" && \
-    /app/.venv/bin/pip install --no-cache-dir -r requirements.txt && \
+    /app/.venv/bin/pip install --no-cache-dir -r requirements.lock.txt && \
     find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
 # ── Stage 2: Minimal Production Runtime ────────────────────────────────────────

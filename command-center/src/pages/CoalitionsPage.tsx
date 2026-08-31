@@ -3,22 +3,14 @@
  */
 import { useState, useEffect } from "react";
 
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
-
-interface Coalition {
-  id: string;
-  members: string[];
-  value: number;
-  epsilon?: number;
-  currency?: string;
-  status?: string;
-}
+import { apiGet, BROKER_URL } from "../lib/apiClient";
+import { normalizeCoalitions, type CoalitionDto as Coalition } from "../lib/apiContracts";
 
 function CoalitionCard({ c }: { c: Coalition }) {
   return (
     <div className="card card--pinned" style={{ marginBottom: "var(--space-4)" }}>
       <div className="card-header">
-        <span className="card-title">Coalition {c.id.slice(0, 8)}</span>
+        <span className="card-title">{c.name ?? `Coalition ${c.id.slice(0, 8)}`}</span>
         <div className={`badge ${c.status === "COMMITTED" ? "badge--committed" : "badge--live"}`}>
           {c.status ?? "Active"}
         </div>
@@ -41,12 +33,15 @@ function CoalitionCard({ c }: { c: Coalition }) {
         </div>
         <div style={{ marginTop: "var(--space-4)" }}>
           <div className="metric-label" style={{ marginBottom: "var(--space-2)" }}>
-            Members ({c.members?.length ?? 0})
+            Members ({c.memberCount})
           </div>
           <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            {(c.members ?? []).map((m) => (
+            {c.members.map((m) => (
               <span key={m} className="badge badge--neutral">{m.slice(0, 8)}</span>
             ))}
+            {c.members.length === 0 && c.memberCount > 0 && (
+              <span className="badge badge--neutral">Member identities are private</span>
+            )}
           </div>
         </div>
       </div>
@@ -60,19 +55,21 @@ export default function CoalitionsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${BROKER_URL}/api/coalitions`)
-      .then((r) => r.json())
-      .then(setCoalitions)
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false));
-
-    const id = setInterval(() => {
-      fetch(`${BROKER_URL}/api/coalitions`)
-        .then((r) => r.json())
-        .then(setCoalitions)
-        .catch(() => {});
-    }, 10000);
-    return () => clearInterval(id);
+    const controller = new AbortController();
+    const load = async (initial = false) => {
+      try {
+        const payload = await apiGet<unknown>(BROKER_URL, "/api/coalitions", { signal: controller.signal });
+        setCoalitions(normalizeCoalitions(payload));
+        setError(null);
+      } catch (error) {
+        if (!controller.signal.aborted && initial) setError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (initial && !controller.signal.aborted) setLoading(false);
+      }
+    };
+    void load(true);
+    const id = window.setInterval(() => void load(), 10000);
+    return () => { controller.abort(); window.clearInterval(id); };
   }, []);
 
   return (

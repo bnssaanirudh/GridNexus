@@ -1,23 +1,37 @@
 /** command-center/src/pages/SettlementsPage.tsx */
 import { useState, useEffect } from "react";
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
-
-interface Settlement { id: string; idempotencyKey: string; negotiationId: string; sellerMicrogridId: string; buyerMicrogridId: string; energyKwh: number; pricePerKwh: number; currency: string; status: string; deliveryStart: string; deliveryEnd: string; createdAt: string; }
+import { apiGet, BROKER_URL } from "../lib/apiClient";
+import { normalizeSettlements, type SettlementDto as Settlement } from "../lib/apiContracts";
 
 const STATUS_CLASS: Record<string, string> = { COMMITTED: "badge--committed", PROVISIONAL: "badge--provisional", VERIFYING: "badge--info", COMMITTING: "badge--info", FAILED: "badge--failed" };
 
+const shortId = (value?: string) => value ? value.slice(0, 8) + "…" : "—";
+const formatNumber = (value: number | undefined, digits: number) => value == null ? "—" : value.toFixed(digits);
+const formatDate = (value?: string) => value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleString() : "—";
 export default function SettlementsPage() {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${BROKER_URL}/api/settlements?limit=50`).then(r => r.json()).then(setSettlements).catch(e => setError(String(e))).finally(() => setLoading(false));
-    const id = setInterval(() => fetch(`${BROKER_URL}/api/settlements?limit=50`).then(r => r.json()).then(setSettlements).catch(() => {}), 15000);
-    return () => clearInterval(id);
+    const controller = new AbortController();
+    const load = async (initial = false) => {
+      try {
+        const payload = await apiGet<unknown>(BROKER_URL, "/api/settlements?limit=50", { signal: controller.signal });
+        setSettlements(normalizeSettlements(payload));
+        setError(null);
+      } catch (error) {
+        if (!controller.signal.aborted && initial) setError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (initial && !controller.signal.aborted) setLoading(false);
+      }
+    };
+    void load(true);
+    const id = window.setInterval(() => void load(), 15000);
+    return () => { controller.abort(); window.clearInterval(id); };
   }, []);
 
-  const totalKwh = settlements.filter(s => s.status === "COMMITTED").reduce((acc, s) => acc + Number(s.energyKwh), 0);
+  const totalKwh = settlements.filter(s => s.status === "COMMITTED").reduce((acc, s) => acc + (s.energyKwh ?? 0), 0);
 
   return (
     <div>
@@ -59,12 +73,12 @@ export default function SettlementsPage() {
                 <tr key={s.id}>
                   <td className="font-mono">{s.id.slice(0, 8)}…</td>
                   <td><div className={`badge ${STATUS_CLASS[s.status] ?? "badge--neutral"}`}>{s.status}</div></td>
-                  <td className="font-mono">{s.sellerMicrogridId.slice(0, 8)}…</td>
-                  <td className="font-mono">{s.buyerMicrogridId.slice(0, 8)}…</td>
-                  <td className="text-primary">{Number(s.energyKwh).toFixed(3)}</td>
-                  <td className="text-primary">{Number(s.pricePerKwh).toFixed(4)}</td>
-                  <td>{s.currency}</td>
-                  <td className="font-mono">{new Date(s.deliveryStart).toLocaleString()}</td>
+                  <td className="font-mono">{shortId(s.sellerMicrogridId)}</td>
+                  <td className="font-mono">{shortId(s.buyerMicrogridId)}</td>
+                  <td className="text-primary">{formatNumber(s.energyKwh, 3)}</td>
+                  <td className="text-primary">{formatNumber(s.pricePerKwh, 4)}</td>
+                  <td>{s.currency ?? "—"}</td>
+                  <td className="font-mono">{formatDate(s.deliveryStart ?? s.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

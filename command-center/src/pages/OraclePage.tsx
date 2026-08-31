@@ -1,13 +1,24 @@
 /** command-center/src/pages/OraclePage.tsx */
 import { useState, useEffect } from "react";
-const BROKER_URL = (import.meta as any).env?.VITE_BROKER_URL ?? "http://localhost:3000";
+import { apiGet, BROKER_URL } from "../lib/apiClient";
+import { normalizeOracleSignals, type OracleSignalDto } from "../lib/apiContracts";
 
-interface OracleSignal {
-  id: string;
-  signalData: string;
-  createdAt: string;
-  beliefUpdates?: Array<{ id: string; posterior: number; confidence: number; hypothesis?: string; decisionSource: string }>;
-  ragContext?: Array<{ sourceType: string; sourceName?: string; synthetic?: boolean; trustScore?: number }>;
+type OracleSignal = OracleSignalDto;
+
+function signalRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : { value: parsed };
+    } catch {
+      return { value };
+    }
+  }
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
 export default function OraclePage() {
@@ -16,9 +27,21 @@ export default function OraclePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${BROKER_URL}/api/oracle/signals?limit=20`).then(r => r.json()).then(setSignals).catch(e => setError(String(e))).finally(() => setLoading(false));
-    const id = setInterval(() => fetch(`${BROKER_URL}/api/oracle/signals?limit=20`).then(r => r.json()).then(setSignals).catch(() => {}), 10000);
-    return () => clearInterval(id);
+    const controller = new AbortController();
+    const load = async (initial = false) => {
+      try {
+        const payload = await apiGet<unknown>(BROKER_URL, "/api/oracle/signals?limit=20", { signal: controller.signal });
+        setSignals(normalizeOracleSignals(payload));
+        setError(null);
+      } catch (error) {
+        if (!controller.signal.aborted && initial) setError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (initial && !controller.signal.aborted) setLoading(false);
+      }
+    };
+    void load(true);
+    const id = window.setInterval(() => void load(), 10000);
+    return () => { controller.abort(); window.clearInterval(id); };
   }, []);
 
   return (
@@ -39,8 +62,7 @@ export default function OraclePage() {
       {!loading && !error && signals.length === 0 && <div className="empty-state"><div className="empty-icon">◉</div><div className="empty-title">No Oracle signals yet</div><div className="empty-desc">Signals appear once the Oracle checkpoint is loaded and negotiations begin.</div></div>}
 
       {signals.map(sig => {
-        let parsed: Record<string, unknown> = {};
-        try { parsed = JSON.parse(sig.signalData); } catch {}
+        const parsed = signalRecord(sig.signalData);
         const isSynthetic = (parsed as any)?.synthetic === true;
 
         return (
