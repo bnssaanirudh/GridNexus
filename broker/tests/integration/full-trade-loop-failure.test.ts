@@ -35,6 +35,7 @@ describe("Full Trade-Loop Failure Injection", () => {
     mg1 = await prisma.microgrid.create({
       data: {
         name: "FailInject-MG1",
+        type: "SOLAR",
         hiddenbatterycapacity: encrypt("100"),
         hiddengenerationcost: encrypt("0.10"),
       }
@@ -42,6 +43,7 @@ describe("Full Trade-Loop Failure Injection", () => {
     mg2 = await prisma.microgrid.create({
       data: {
         name: "FailInject-MG2",
+        type: "WIND",
         hiddenbatterycapacity: encrypt("200"),
         hiddengenerationcost: encrypt("0.20"),
       }

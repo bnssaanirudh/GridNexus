@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createWsClient, type ConnectionState } from "../lib/wsClient";
 import type { NegotiationEvent } from "../lib/wsClient";
+import { apiPost, BROKER_URL } from "../lib/apiClient";
 
 const PIPELINE_STAGES = [
   "ORACLE_SIGNAL", "BELIEF_UPDATE", "LLM_PROPOSAL", "SCHEMA_VALIDATION",
@@ -83,14 +84,32 @@ export default function NegotiationFeedPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+        <div style={{ flex: 1 }}>
           <h1 className="page-title">Negotiations</h1>
           <div className="page-subtitle">Live negotiation pipeline events via WebSocket</div>
         </div>
-        <div className={`conn-badge conn-badge--${connState}`}>
-          <span className="conn-dot" />
-          {connState === "connected" ? "WS Connected" : connState === "connecting" ? "Connecting…" : "Disconnected"}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
+          <div className={`conn-badge conn-badge--${connState}`}>
+            <span className="conn-dot" />
+            {connState === "connected" ? "WS Connected" : connState === "connecting" ? "Connecting…" : "Disconnected"}
+          </div>
+          <button 
+            className="btn btn-primary" 
+            style={{ fontSize: "12px", padding: "4px 8px" }}
+            onClick={async () => {
+              const apiKey = window.prompt("Enter your OpenAI API Key for the Live LLM Demo:");
+              if (!apiKey) return;
+              try {
+                await apiPost(BROKER_URL, "/api/demo/live-trade", { apiKey });
+                alert("Live Demo Trade started! Watch the feed for updates.");
+              } catch (e) {
+                alert("Error starting demo: " + (e as Error).message);
+              }
+            }}
+          >
+            ▶ Start Live LLM Demo
+          </button>
         </div>
       </div>
 

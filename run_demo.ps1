@@ -9,3 +9,4 @@ Write-Host "Starting Vite dev server..."
 cd command-center
 $env:VITE_DEMO_MODE="true"
 npm run dev
+

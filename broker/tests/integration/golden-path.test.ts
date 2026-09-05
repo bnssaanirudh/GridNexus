@@ -141,6 +141,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
     mg1 = await prisma.microgrid.create({
       data: {
         name: "GoldenPath-MG-Solar",
+        type: "SOLAR",
         hiddenbatterycapacity: encrypt("500"),
         hiddengenerationcost: encrypt("0.06"),
       },
@@ -148,6 +149,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
     mg2 = await prisma.microgrid.create({
       data: {
         name: "GoldenPath-MG-Wind",
+        type: "WIND",
         hiddenbatterycapacity: encrypt("400"),
         hiddengenerationcost: encrypt("0.09"),
       },
@@ -256,28 +258,23 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
   it("T2: Bargaining session reaches ACCEPTED and StabilityGate approves the coalition", async () => {
     let engineCalls = 0;
 
-    // Mock Engine: 2 rounds of COUNTER_OFFER, then ACCEPT with decision_source tracing the Oracle signal
-    global.fetch = vi.fn().mockImplementation(async (_url: string, _opts: any) => {
+    clientSocket.on("your_turn", (data: any) => {
       engineCalls++;
       if (engineCalls < 3) {
-        return {
-          ok: true,
-          json: async () => ({
-            action: "COUNTER_OFFER",
-            decision_source: "LLM",
-            counter_offer_price: 8.0 + engineCalls,
-            counter_requested_kwh: 75.0,
-          }),
-        };
-      }
-      return {
-        ok: true,
-        json: async () => ({
+        clientSocket.emit("agent_action", {
+          negotiationId: data.negotiationId,
+          action: "COUNTER_OFFER",
+          decision_source: "LLM",
+          counter_offer_price: 8.0 + engineCalls,
+          counter_requested_kwh: 75.0,
+        });
+      } else {
+        clientSocket.emit("agent_action", {
+          negotiationId: data.negotiationId,
           action: "ACCEPT",
-          // ORACLE_SIGNAL indicates the Oracle's broadcast was the deciding factor
           decision_source: "ORACLE_SIGNAL",
-        }),
-      };
+        });
+      }
     });
 
     const done = new Promise<void>((resolve, reject) => {
@@ -290,8 +287,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
     });
 
     clientSocket.emit("start_negotiation", {
-      agentId1: agent1.id,
-      agentId2: agent2.id,
+      agentIds: [agent1.id, agent2.id],
       initialSurplus: 300.0,
     });
 
@@ -300,8 +296,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
     // Confirm StabilityGate was called
     expect(mockStabilityGateCheck).toHaveBeenCalled();
     const [gateCtx] = mockStabilityGateCheck.mock.calls[0];
-    expect(gateCtx.agentId1).toBe(agent1.id);
-    expect(gateCtx.agentId2).toBe(agent2.id);
+    expect(gateCtx.agentIds).toEqual([agent1.id, agent2.id]);
   });
 
   // ──────────────────────────────────────────────────────────────────────────

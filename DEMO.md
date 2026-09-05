@@ -132,13 +132,11 @@ You should see:
 
 ### 6c. Trigger a Live Negotiation Session
 
-Open a second terminal and run:
+Open a second terminal and run our deterministic simulator:
 
 ```bash
-# Start a negotiation session between mg-1 and mg-2
-curl -X POST http://localhost:3000/api/negotiate \
-  -H "Content-Type: application/json" \
-  -d '{"initiatorId":"mg-1","responderId":"mg-2","energyKwh":50,"maxRounds":10}'
+cd broker
+npx tsx scripts/demo-negotiation.ts
 ```
 
 Watch the Command Center dashboard — you will see:

@@ -200,7 +200,7 @@ Access the services:
 
 ```bash
 # Run all test suites
-npm run test:all  # or make test
+npm test
 
 # Engine (Pytest)
 cd engine && poetry run pytest

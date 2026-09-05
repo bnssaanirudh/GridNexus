@@ -85,8 +85,8 @@ describe("Audit Trail Hardening ", () => {
   it("T1: App DB role rejects UPDATE on audit tables (Triggers active)", async () => {
     try {
       // 1. Setup minimal data
-      const mg1 = await prisma.microgrid.create({ data: { name: "MG1", hiddenbatterycapacity: "100", hiddengenerationcost: "10" } });
-      const mg2 = await prisma.microgrid.create({ data: { name: "MG2", hiddenbatterycapacity: "100", hiddengenerationcost: "10" } });
+      const mg1 = await prisma.microgrid.create({ data: { name: "MG1", type: "SOLAR", hiddenbatterycapacity: "100", hiddengenerationcost: "10" } });
+      const mg2 = await prisma.microgrid.create({ data: { name: "MG2", type: "WIND", hiddenbatterycapacity: "100", hiddengenerationcost: "10" } });
       const sc = await prisma.stabilityCheck.create({ data: { isStable: true, margin: 10.0 } });
       const transfer = await prisma.energyTransfer.create({
         data: {

@@ -36,9 +36,7 @@ def get_embedding_model() -> "SentenceTransformer":
     if _embedding_model is None:
         import os
         from sentence_transformers import SentenceTransformer  # noqa: PLC0415
-        # Ensure we only load from local cache if pre-bundled, prevent runtime downloads if configured
-        local_only = os.getenv("RAG_LOCAL_MODELS_ONLY", "false").lower() == "true"
-        _embedding_model = SentenceTransformer(_EMBEDDING_MODEL_NAME, local_files_only=local_only)
+        _embedding_model = SentenceTransformer(_EMBEDDING_MODEL_NAME)
     return _embedding_model
 
 

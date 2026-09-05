@@ -1,0 +1,514 @@
+﻿DriftGuardX — Production-Level and Patentability Roadmap
+
+Based on the current DriftGuardX codebase, the remaining work should be treated as a productionization + invention-isolation roadmap, not simply “finish more features.”
+
+Important patent point:
+Because the repository is publicly accessible, patent work should be treated as time-sensitive. Patent novelty generally depends on whether the claimed invention was publicly disclosed before the relevant filing/priority date. The eventual claims should be framed around a technical mechanism and technical effect, rather than “an AI software platform” or an algorithm by itself.
+
+WHAT NEEDS TO BE DONE
+
+1. Get the current repository completely green first. Fix Ruff, all Python tests, MyPy, Playwright, security scans, migrations, Docker builds, and SBOM checks before adding additional capabilities.
+
+2. Freeze a clean production baseline commit. Create something like v2.1.0-alpha-production-base once every mandatory gate passes.
+
+3. Remove every simulated result from the operational path. No simulated_utility = 0.95, synthetic “successful” recovery, fake quarantine confirmation, or automatically generated diagnosis should be allowed to masquerade as measured evidence.
+
+4. Keep synthetic demonstrations, but isolate them explicitly. Everything must be tagged as one of:
+   synthetic_simulation
+   controlled_replay
+   production_canary
+
+5. Replace the current hard-coded replay query. A replay must reconstruct the exact original run state from a manifest rather than replaying "What are the latest AI safety guidelines?".
+
+6. Remove the retriever-only replay assumption. BCRB must be capable of intervening on Retriever, Generator, Agent, Tool, Prompt, Memory, Policy, Routing configuration, Model version, and Agent configuration.
+
+7. Create a generic InterventionSpec. It should contain target component/agent, current version, candidate version, intervention type, expected cost, risk, blast radius, dependencies, and rollback plan.
+
+8. Make replay operate on InterventionSpec, not hard-coded Python variables.
+
+9. Connect the new 7-agent pipeline to the actual tracing infrastructure. At the moment, the agent pipeline and mature tracing/replay stack are too separate.
+
+10. Emit an explicit span for every agent invocation. Every Orchestrator, Retrieval, Reasoning, Tool, Verifier, Policy, and Response invocation should generate a traceable AGENT execution event.
+
+11. Give every agent a stable identity and version. Store agent_id, agent_type, agent_version, model provider, model ID, prompt hash, configuration hash, and tool registry hash.
+
+12. Instrument agent-to-agent messages. Every delegation/message should produce a causal edge such as:
+    Orchestrator → Retrieval
+    Retrieval → Reasoning
+    Reasoning → Tool
+
+13. Add a real Memory Agent if memory is part of the research claim. Otherwise don't claim an 8-agent architecture.
+
+14. Do not add agents merely to increase agent count. Seven well-defined agents are sufficient if the research contribution is causal diagnosis rather than agent collaboration itself.
+
+15. Make orchestration dynamic. The current fixed sequence should eventually allow branching, retries, delegation, fallbacks, and conditional routing.
+
+16. Store the actual topology used during every run. Never depend on a hard-coded topology in the frontend or replay manifest.
+
+17. Generate the UI topology from execution evidence. Delete the static five-node recovery graphic as an evidence source.
+
+18. Connect GAT detection to the diagnosis pipeline. Its probabilities/root-cause candidates should influence candidate generation.
+
+19. Connect diffusion propagation to candidate generation. Use backwards propagation from observed symptoms to rank upstream components.
+
+20. Build a unified candidate-prior layer. For example:
+    P(cause_i) = f(GAT, diffusion, symptoms, version drift, history)
+
+21. Implement actual BCRB rather than candidate enumeration. The current planner proposes interventions but does not implement a true sequential budget-constrained decision process.
+
+22. Give every candidate a proper utility function. For example:
+    U_i = (P_i × E[ΔR_i] × IG_i) / (C_i + λ Risk_i + μ BlastRadius_i)
+
+    where P is causal probability, ΔR expected reliability improvement, IG expected information gain, and C cost.
+
+23. Track a real budget. BCRBSession.budget_usd must actually constrain executions.
+
+24. Charge actual replay cost. Include tokens, API usage, compute, execution time, and infrastructure cost.
+
+25. Update beliefs after every replay. This is essential. The sequence should become:
+    prior → intervention → observation → posterior → next candidate.
+
+26. Define formal stopping conditions. Examples: confidence reached, reliability recovered, budget exhausted, all safe candidates tested, or expected utility below threshold.
+
+27. Allow BCRB to return “unknown”. Never force a diagnosis merely because one candidate scored highest.
+
+28. Replace the current utility > 0.8 = root cause rule with calibrated evidence.
+
+29. Separate recovery improvement from causal confidence. A patch can fix a symptom without necessarily proving the patched component was the original cause.
+
+30. Introduce counterfactual causal-support metrics. Compare:
+    baseline
+    intervention
+    negative control
+    alternative intervention
+    repeated replay
+
+31. Add contamination/confounding checks. If another variable changed during replay, don't treat the intervention as causal confirmation.
+
+32. Make ReplayStateManifest the central reproducibility object. It should contain the complete reproducible state needed to reconstruct the run.
+
+33. Expand manifests for multi-agent systems. Include agent versions, routing graph, task state, prompts, tools, memory snapshots, policies, model versions, retrieval state, seeds, dependencies, and image digest.
+
+34. Never allow replay fallback to an unrelated version. If the required pinned version cannot be reconstructed, fail closed.
+
+35. Preserve the existing isolated process/container replay architecture. This is one of DriftGuardX's strongest components.
+
+36. Build proper external-agent integration. A real user's flow should become:
+    register pipeline → register run → emit spans → finalize run → analyze.
+
+37. Fix external trace ingestion. SpanRecordORM and TraceArtifact currently need a consistent authoritative trace representation.
+
+38. Create a finalize_run endpoint. It should calculate trace digest, reliability, graph, status, token/cost summary, and trigger diagnosis.
+
+39. Add a production Python SDK. The desired experience should look roughly like:
+    client.start_run()
+    run.agent()
+    run.tool()
+    run.message()
+    run.finish()
+
+40. Add automatic batching and retry buffering to the SDK. Telemetry must survive temporary DriftGuardX outages.
+
+41. Create decorators/context managers for instrumentation. Developers should not manually construct hundreds of JSON spans.
+
+42. Create an OpenTelemetry exporter rather than only an OTel bridge.
+
+43. Add LangGraph integration.
+
+44. Add OpenAI Agents SDK integration.
+
+45. Add AutoGen/CrewAI adapters only after the generic SDK works.
+
+46. Fix production authentication around Recovery immediately. The new recovery endpoint must never trust client-supplied tenant_id.
+
+47. Every protected route must derive tenant identity from authentication.
+
+48. Add RBAC roles such as Viewer, Investigator, Operator, Approver, and Administrator.
+
+49. Require stronger privileges for replay, quarantine, approval, and production recovery than for viewing telemetry.
+
+50. Persist recovery records in PostgreSQL. Do not use an in-memory CERTIFICATE_STORE.
+
+51. Persist BCRB sessions, steps, candidates, diagnoses, approvals, quarantines, and canary runs.
+
+52. Add complete immutable audit logging.
+
+53. Digitally sign important evidence objects. Replay evidence, diagnosis, approval decision, and recovery certificate should be tamper-evident.
+
+54. Use KMS/HSM-backed signing keys in production.
+
+55. Keep Ed25519 signing support where appropriate, but never store private production signing keys casually in environment variables or source code.
+
+56. Implement real human approval. A production change should move through something like:
+    PROPOSED → REPLAY_CONFIRMED → AWAITING_APPROVAL → APPROVED → CANARY → PROMOTED.
+
+57. Record who approved the intervention, when, under which role, and based on which evidence hash.
+
+58. Add explicit rejection and expiry states.
+
+59. Never automatically repair a production AI system from synthetic evidence.
+
+60. Separate quarantine from repair. Quarantine is a temporary containment action; recovery changes system state.
+
+61. Make quarantine durable and actually enforced. It should affect agent routing/provider/tool execution rather than only an in-memory Python list.
+
+62. Add fallback routing. If an agent/version is quarantined, the orchestrator should have a declared safe fallback.
+
+63. Add a real canary mechanism. Route a small controlled workload through the candidate configuration.
+
+64. Define canary invariants before execution. Reliability, latency, cost, safety-policy compliance, and failure rate should have explicit acceptable bounds.
+
+65. Automatically rollback failed canaries.
+
+66. Do not automatically promote successful canaries without configured organizational approval policy.
+
+67. Move replay and diagnosis to workers. Heavy analysis should not run synchronously in the FastAPI request process.
+
+68. Use Redis/ARQ or another durable queue properly. The existing worker currently needs real jobs.
+
+69. Create durable job states:
+    QUEUED
+    RUNNING
+    SUCCEEDED
+    FAILED
+    CANCELLED
+    TIMED_OUT
+
+70. Support job retry and idempotency.
+
+71. Add dead-letter handling.
+
+72. Add worker concurrency/resource limits.
+
+73. Make the UI reflect actual asynchronous state instead of saying “Processing” after a synchronous response.
+
+74. Fix the Run Detail workflow. Graph, Timeline, Diagnosis, Replays, Interventions, and Report should all be directly navigable from a run.
+
+75. Remove manual UUID copy/paste from Replay Lab.
+
+76. Allow users to select a run and proposed intervention from the UI.
+
+77. Add a Diagnosis page showing evidence, not merely a label.
+
+78. Show prior probability, tested intervention, measured delta, posterior confidence, replay ID, and manifest hash.
+
+79. Show why BCRB picked the next experiment. Explainability here is valuable both commercially and academically.
+
+80. Separate observed facts from inferred causal conclusions visually.
+
+81. Add a full approval UI.
+
+82. Add canary progress and rollback UI.
+
+83. Make Recovery Certificates verifiable from the UI.
+
+84. Remove every static or illustrative statistic from operational dashboards unless clearly labelled.
+
+85. Add production observability for DriftGuardX itself. Metrics should include ingestion delay, worker backlog, replay latency, detector latency, error rates, database connections, resource consumption, and tenant usage.
+
+86. Add distributed tracing of DriftGuardX's own services.
+
+87. Add Prometheus/Grafana or equivalent monitoring.
+
+88. Add alerting.
+
+89. Add rate limiting per tenant/API key.
+
+90. Add quotas for telemetry volume and replay cost.
+
+91. Implement secrets management.
+
+92. Use TLS everywhere in production.
+
+93. Introduce strict network policies.
+
+94. Restrict replay containers from accessing production resources unless explicitly required.
+
+95. Add egress restrictions for replay environments.
+
+96. Use immutable digest-pinned production container images.
+
+97. Run as non-root everywhere.
+
+98. Add automated PostgreSQL backup and tested restore procedures.
+
+99. Add database migration rollback tests for every release.
+
+100. Run load tests. Test span ingestion under realistic multi-agent traffic.
+
+101. Run stress tests on replay workers.
+
+102. Run failure injection: kill Redis, PostgreSQL, worker, model provider, and network connectivity.
+
+103. Test partial span arrival and out-of-order spans.
+
+104. Test multi-agent loops and runaway delegation.
+
+105. Add maximum agent-hop/retry limits.
+
+106. Add prompt-injection/adversarial tests against diagnosis and recovery.
+
+107. Test malicious telemetry.
+
+108. Test tenant-crossing attacks.
+
+109. Conduct an independent penetration test before calling the system production-ready.
+
+110. Add privacy controls. Support metadata-only tracing, selective content capture, configurable redaction, retention, and deletion.
+
+111. Create a proper data-retention policy.
+
+112. Do not retain raw prompts/responses unless required. Prefer cryptographic hashes where possible.
+
+113. Add configurable PII detection/redaction.
+
+114. Add consent/compliance documentation if customer data will flow through the system.
+
+115. Fix Python packaging. Include bcrb, diagnosis, isolation, and every other runtime package in the built wheel.
+
+116. Publish a proper SDK package only after the packaging test verifies installed-wheel behavior.
+
+117. Create clean API versioning. Keep /v1 stable and develop breaking changes in /v2.
+
+118. Define backward compatibility expectations for span schemas.
+
+119. Create generated OpenAPI/SDK contracts.
+
+120. Create end-to-end integration tests using an actual external sample multi-agent application.
+
+
+RESEARCH-SIDE WORK
+
+121. Build a real benchmark with multiple fault families. At minimum:
+     retrieval failure
+     model regression
+     tool failure
+     policy failure
+     prompt regression
+     routing failure
+     memory contamination
+     agent-version failure
+     cascading agent failure
+
+122. Create ground-truth injected faults.
+
+123. Run Random as baseline.
+
+124. Run Fixed Order as baseline.
+
+125. Run Exhaustive Search as baseline.
+
+126. Run graph-ranking-only baseline.
+
+127. Run GAT-only baseline.
+
+128. Run diffusion-only baseline.
+
+129. Run BCRB without graph prior.
+
+130. Run BCRB with graph prior.
+
+131. Run BCRB with graph + learned prior.
+
+132. Measure root-cause localization accuracy.
+
+133. Measure confirmed-cause accuracy separately from localization accuracy.
+
+134. Measure replay count.
+
+135. Measure total diagnostic cost.
+
+136. Measure time to diagnosis.
+
+137. Measure false causal confirmation rate.
+
+138. Measure unnecessary intervention rate.
+
+139. Measure blast radius.
+
+140. Measure recovery success.
+
+141. Measure production-canary failure detection once a real canary environment exists.
+
+142. Calculate confidence intervals and statistical significance.
+
+143. Run ablations to prove what GAT, diffusion, provenance, and Bayesian updating individually contribute.
+
+144. Do not hide negative BCRB results. The existing negative results actually strengthen research credibility.
+
+
+PATENT-SPECIFIC WORK
+
+145. Do not try to patent “DriftGuardX” as one giant software platform. That is too broad and risks being characterized as software/algorithm functionality.
+
+146. Extract one precise invention nucleus.
+
+Preferred invention nucleus:
+“A provenance-bound, budget-constrained causal fault localization and recovery validation system for multi-agent computational workflows using adaptive counterfactual replay.”
+
+147. The invention should be described as a technical control mechanism, not “an AI that finds bugs.”
+
+148. Frame the technical problem: autonomous distributed AI workflows generate interacting execution failures that cannot be reliably localized from conventional logs.
+
+149. Frame the technical solution: capture provenance-bound execution state, construct causal dependencies, select bounded interventions, re-execute isolated portions, update causal beliefs, and prevent recovery unless replay evidence satisfies machine-verifiable criteria.
+
+150. Frame measurable technical effects, such as:
+     reducing unnecessary re-executions
+     constraining compute/resource consumption
+     reducing replay blast radius
+     preventing contaminated state mutation
+     improving reproducibility
+     improving fault isolation in distributed computational workflows
+
+151. Do not make “Bayesian selection” alone the inventive feature. A mathematical algorithm by itself is much harder to defend.
+
+152. Do not make “using an LLM” the novelty.
+
+153. Do not make “multiple agents” the novelty.
+
+154. Do not make “causal graph + replay” by itself the only novelty claim. Those elements exist separately in prior work.
+
+155. Focus on the specific integration and control mechanism.
+
+156. A potentially stronger independent-method concept is:
+     Receive provenance-bound execution traces
+     → generate a causal reliability graph
+     → determine candidate interventions
+     → calculate budget/risk/information utility
+     → execute one candidate in an isolated state-pinned replay environment
+     → compute a measured reliability delta
+     → update candidate causal probabilities
+     → repeat subject to budget
+     → permit recovery only upon cryptographically bound replay confirmation.
+
+157. That entire closed-loop mechanism is more defensible than any single algorithm inside it.
+
+158. Add a cryptographic provenance dimension to strengthen technical character. Every tested intervention should be bound to run state, model versions, tools, prompts, dependencies, policies, memory state, and execution environment.
+
+159. Introduce “non-target-state invariance verification.” DriftGuardX should mathematically/cryptographically verify that variables outside the intervention scope remained pinned.
+
+160. This may become one of the strongest inventive components: a system that refuses causal confirmation when replay invariance cannot be demonstrated.
+
+161. Add adaptive replay-budget allocation based on causal uncertainty.
+
+162. Add measured-information-gain selection rather than only probability/cost.
+
+163. Add blast-radius-aware candidate selection.
+
+164. Add causal contamination detection.
+
+165. Add confidence degradation when provider/model nondeterminism prevents reliable comparison.
+
+166. Add replay equivalence proofs/hashes wherever technically possible.
+
+167. Add evidence-bound recovery certificates that cannot be generated unless the replay state matches the proposed intervention.
+
+168. Do not allow certificates to be generated from simulated utility.
+
+169. Document every technical mechanism with architecture diagrams, state machines, pseudocode, equations, and alternative embodiments.
+
+170. Keep an invention notebook. Record dates, inventors, experimental results, architecture changes, failed approaches, and decisions.
+
+171. Determine actual inventorship carefully. Patent inventorship depends on contribution to the claimed invention, not repository ownership or who typed the code.
+
+172. Perform a dedicated prior-art search before finalizing claims. Search patents and papers around:
+     causal debugging
+     counterfactual debugging
+     replay debugging
+     distributed tracing
+     LLM observability
+     multi-agent observability
+     autonomous recovery
+     bandit fault diagnosis
+     provenance replay
+     agent rollback
+     causal fault localization
+     self-healing systems
+     budget-constrained diagnosis
+
+173. Search Google Patents, Espacenet, WIPO Patentscope, USPTO, and Indian Patent Search.
+
+174. Create a claim chart comparing every proposed claim element against the closest prior art.
+
+175. Anything already disclosed in a single prior-art reference should not be treated as novelty.
+
+176. For inventive step, identify why combining the known pieces would not have been an obvious routine implementation.
+
+177. Show experimental evidence of unexpected technical benefit. For example, substantially fewer replays under equal causal-confirmation accuracy can help support the engineering importance of the combination.
+
+178. Do not invent experimental advantages simply to support patentability.
+
+179. Assess the existing public GitHub disclosure with an Indian patent professional immediately. Public disclosure can matter to novelty.
+
+180. Avoid publishing additional details of any newly developed inventive mechanisms before discussing filing strategy.
+
+181. Consider keeping some implementation details as trade secrets instead of putting everything into the patent. Examples could include proprietary learned priors, production heuristics, scoring calibration, or customer-specific policies.
+
+182. Use copyright for the source code, trademark protection for the DriftGuardX name/brand if appropriate, and patents only for qualifying technical inventions.
+
+183. Prepare multiple claim categories with patent counsel:
+     method claim
+     system claim
+     computer-readable-medium claim where legally appropriate
+
+184. Include multiple embodiments. The invention should not be restricted only to RAG or LLMs if the actual mechanism works for broader multi-component autonomous computational pipelines.
+
+185. Do not claim guaranteed causality. Claim a technical process for obtaining replay-supported causal evidence.
+
+186. Do not claim guaranteed safety.
+
+187. Do not call the certificate a legal/security certification. Call it a cryptographically verifiable recovery evidence artifact.
+
+188. Get a professional Indian CRI patentability review before filing.
+
+
+PATENT-WORTHY TARGET ARCHITECTURE
+
+Multi-Agent Execution
+        ↓
+Provenance-Bound Trace Fabric
+        ↓
+Causal Reliability Graph
+        ↓
+Fault Evidence Fusion
+(GAT + Diffusion + Symptoms)
+        ↓
+Causal Prior Distribution
+        ↓
+Budget/Risk/Information-Aware
+Counterfactual Selection
+        ↓
+State-Pinned Isolated Replay
+        ↓
+Non-Target Invariance Check
+        ↓
+Measured Intervention Effect
+        ↓
+Bayesian/Causal Belief Update
+        ↓
+Repeat Under Budget
+        ↓
+Replay-Supported Diagnosis
+        ↓
+Human/Policy Gate
+        ↓
+Bounded Canary
+        ↓
+Recovery
+        ↓
+Cryptographically Bound
+Recovery Evidence
+
+
+MILESTONE INTERPRETATION
+
+If points 1–120 are completed:
+Credible production-candidate architecture.
+
+If points 121–144 are additionally completed:
+Strong evidence base for a serious research paper.
+
+If prior-art investigation supports novelty and points 146–168 are implemented:
+Potentially stronger patent case around the specific technical mechanism.
+
+Patentability itself must still be determined against actual prior art and applicable examination standards.

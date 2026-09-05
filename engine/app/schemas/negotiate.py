@@ -14,6 +14,7 @@ class NegotiationRequest(BaseModel):
     current_requested_kwh: float | None = Field(None, description="The kWh requested.")
     round_number: int = Field(..., description="Current round of negotiation.")
     surplus: float = Field(..., description="Implied surplus before discounting.")
+    api_key: str | None = Field(None, description="Optional LLM API key passed at runtime.")
 
 class NegotiationResponse(BaseModel):
     action: NegotiationActionEnum = Field(..., description="The action chosen by the agent.")

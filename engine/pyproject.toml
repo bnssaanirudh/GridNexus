@@ -36,6 +36,7 @@ python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 python-multipart = "^0.0.9"
 h5py = "^3.16.0"
+aiosqlite = "^0.22.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.0.3"

@@ -139,8 +139,8 @@ describe("StabilityGate Integration ", () => {
       httpServer.listen(() => {
         port = (httpServer.address() as any).port;
         
-        clientSocket1 = Client(`http://localhost:${port}/negotiate`);
-        clientSocket2 = Client(`http://localhost:${port}/negotiate`);
+        clientSocket1 = Client(`http://localhost:${port}/negotiate`, { query: { agentId: "agentA" }});
+        clientSocket2 = Client(`http://localhost:${port}/negotiate`, { query: { agentId: "agentB" }});
         
         let connected = 0;
         const check = () => { if (++connected === 2) resolve(); };
@@ -196,9 +196,23 @@ describe("StabilityGate Integration ", () => {
       });
     });
 
+    clientSocket1.on("your_turn", (data: any) => {
+      clientSocket1.emit("agent_action", {
+        negotiationId: data.negotiationId,
+        action: "ACCEPT",
+        decision_source: "LLM"
+      });
+    });
+    clientSocket2.on("your_turn", (data: any) => {
+      clientSocket2.emit("agent_action", {
+        negotiationId: data.negotiationId,
+        action: "ACCEPT",
+        decision_source: "LLM"
+      });
+    });
+
     clientSocket1.emit("start_negotiation", {
-      agentId1: "agentA",
-      agentId2: "agentB",
+      agentIds: ["agentA", "agentB"],
       initialSurplus: 100.0
     });
 
@@ -246,9 +260,23 @@ describe("StabilityGate Integration ", () => {
       });
     });
 
-    clientSocket1.emit("start_negotiation", {
-      agentId1: "agentC",
-      agentId2: "agentD",
+    clientSocket1.on("your_turn", (data: any) => {
+      clientSocket1.emit("agent_action", {
+        negotiationId: data.negotiationId,
+        action: "ACCEPT",
+        decision_source: "LLM"
+      });
+    });
+    clientSocket2.on("your_turn", (data: any) => {
+      clientSocket2.emit("agent_action", {
+        negotiationId: data.negotiationId,
+        action: "ACCEPT",
+        decision_source: "LLM"
+      });
+    });
+
+    clientSocket2.emit("start_negotiation", {
+      agentIds: ["agentA", "agentB"],
       initialSurplus: 100.0
     });
 
@@ -266,5 +294,8 @@ describe("StabilityGate Integration ", () => {
     const transfers = await prisma.energyTransfer.findMany();
     expect(transfers.length).toBe(1);
     expect(transfers[0].stabilitycheckid).toBe(checks[0].id);
+
+    clientC.disconnect();
+    clientD.disconnect();
   });
 });

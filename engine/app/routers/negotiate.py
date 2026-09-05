@@ -83,7 +83,7 @@ async def negotiate(request: NegotiationRequest, db: AsyncSession = Depends(get_
         "opponent_history_embedding": [0.0, 0.0, 0.0, 0.0] # Mock embedding
     }
     
-    provider = get_provider()
+    provider = get_provider(api_key=request.api_key)
     prompt = build_negotiation_prompt(
         agent_id=request.agent_id,
         opponent_id=request.opponent_id,

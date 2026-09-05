@@ -39,11 +39,11 @@ class MockLLMProvider(NegotiationLLMProvider):
 class LangChainLLMProvider(NegotiationLLMProvider):
     """A production LLM provider using LangChain's Chat models."""
     
-    def __init__(self, model_name: str = "gpt-4o-mini", temperature: float = 0.0):
+    def __init__(self, model_name: str = "gpt-4o-mini", temperature: float = 0.0, api_key: str | None = None):
         # We lazily import langchain to avoid slow startup if not used
         try:
             from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(model=model_name, temperature=temperature)
+            self.llm = ChatOpenAI(model=model_name, temperature=temperature, api_key=api_key)
         except ImportError:
             raise ProviderError("langchain-openai is not installed.")
         except Exception as e:
@@ -62,7 +62,7 @@ class LangChainLLMProvider(NegotiationLLMProvider):
             logger.error(f"LLM Provider Error: {e}")
             raise ProviderError(f"LLM Provider failed: {e}")
 
-def get_provider() -> NegotiationLLMProvider:
+def get_provider(api_key: str | None = None) -> NegotiationLLMProvider:
     """Factory to get the appropriate LLM provider based on configuration."""
     mode = os.environ.get("GRIDNEXUS_MODE", "simulation").lower()
     
@@ -74,17 +74,17 @@ def get_provider() -> NegotiationLLMProvider:
         
         provider_type = os.environ.get("LLM_PROVIDER", "openai").lower()
         if provider_type == "openai":
-            if not os.environ.get("OPENAI_API_KEY"):
+            if not api_key and not os.environ.get("OPENAI_API_KEY"):
                 raise RuntimeError("OPENAI_API_KEY is required for LangChainLLMProvider in production.")
-            return LangChainLLMProvider()
+            return LangChainLLMProvider(api_key=api_key)
         else:
             raise RuntimeError(f"Unsupported LLM_PROVIDER in production: {provider_type}")
             
     else:
         # For simulation/test, fallback to Mock if no keys are provided
-        if os.environ.get("OPENAI_API_KEY"):
+        if api_key or os.environ.get("OPENAI_API_KEY"):
             try:
-                return LangChainLLMProvider()
+                return LangChainLLMProvider(api_key=api_key)
             except ProviderError:
                 pass
         return MockLLMProvider()

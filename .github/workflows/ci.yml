@@ -119,7 +119,7 @@ jobs:
         working-directory: ./broker
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
-        run: npx prisma db push
+        run: npx prisma migrate deploy
 
       - name: Run Jest tests
         working-directory: ./broker
@@ -128,6 +128,34 @@ jobs:
           REDIS_URL: redis://localhost:6379
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
         run: npm test
+
+  command-center-build:
+    name: Command Center Build (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./command-center
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ./command-center
+        run: npm run lint
+        
+      - name: Run Vitest
+        working-directory: ./command-center
+        run: npm test
+
+      - name: Build frontend
+        working-directory: ./command-center
+        run: npm run build
 
   smoke-test:
     name: Docker Compose Smoke Test
@@ -279,7 +307,7 @@ jobs:
         working-directory: ./broker
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
-        run: npx prisma db push
+        run: npx prisma migrate deploy
 
       - name: Run integration test suite
         working-directory: ./broker
@@ -345,7 +373,7 @@ jobs:
         working-directory: ./broker
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
-        run: npx prisma db push
+        run: npx prisma migrate deploy
 
       - name: Run golden-path regression test
         working-directory: ./broker
@@ -367,6 +395,7 @@ jobs:
       - engine-tests
       - adversarial-tests
       - broker-tests
+      - command-center-build
       - smoke-test
       - integration-tests
       - golden-path-test
@@ -380,4 +409,4 @@ jobs:
             echo "One or more required jobs did not succeed."
             exit 1
           fi
-          echo "All 6 CI jobs passed — safe to merge."
+          echo "All 7 CI jobs passed — safe to merge."

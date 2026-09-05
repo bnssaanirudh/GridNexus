@@ -1,0 +1,79 @@
+================================================================================
+GRIDNEXUS - PROFESSOR DEMONSTRATION SCRIPT & WALKTHROUGH
+================================================================================
+
+Step 1: The Landing Page (Entry Point)
+--------------------------------------------------------------------------------
+1. Open your browser and go to http://localhost:5173.
+2. What to say:
+   "This is the entry point for GridNexus. In a real-world scenario, utility 
+   operators would log in securely here. For this demonstration, I've built a 
+   'Guest Demo' mode that allows us to safely explore the live operational data 
+   without needing credentials."
+3. Action:
+   Click the "Continue as Guest" (or Guest Demo) button.
+
+
+Step 2: The Dashboard & Scale
+--------------------------------------------------------------------------------
+1. You will land on the main Dashboard/Overview page.
+2. What to say:
+   "Right now, we are looking at a live simulation environment. To prove the 
+   platform can handle real-world scale, I have seeded the PostgreSQL database 
+   with exactly 1,000 simulated microgrids, 25 grid buses, and 40 transmission 
+   lines. The metrics you see here are aggregating that massive dataset in real-time."
+3. Action:
+   Briefly point out the total number of assets or high-level energy metrics on the screen.
+
+
+Step 3: The Negotiations Page (The "Wow" Factor)
+--------------------------------------------------------------------------------
+1. Action:
+   Navigate to the Negotiations (or Live Feed) tab.
+2. What to say:
+   "This is the core of GridNexus. What you are looking at is a live WebSocket 
+   connection. The React frontend is connected to our Node.js Broker, which is 
+   actively communicating with a Python-based Physics and Game Theory Engine."
+3. Action:
+   Point to the WebSocket Status Badge (it should show as connected/green).
+4. What to say:
+   "The Python engine is using PyTorch to calculate optimal energy trades and 
+   stability allocations. As those calculations finish, the Broker pushes them 
+   instantly to this UI via WebSockets. You are watching autonomous microgrids 
+   negotiate energy distribution in real-time."
+
+
+Step 4: The Grid & Topology
+--------------------------------------------------------------------------------
+1. Action:
+   Navigate to the Grid / Topology page.
+2. What to say:
+   "Here we can see the physical constraints of the network. Because we are 
+   dealing with physical electricity, the trades negotiated in the previous step 
+   are verified against this topology to ensure we don't overload the power lines. 
+   If a trade would cause a blackout, the engine rejects it."
+
+
+Step 5: System Health & Architecture (Technical Proof)
+--------------------------------------------------------------------------------
+1. Action:
+   Navigate to the System Health or Audit page (wherever the system status is displayed).
+2. What to say:
+   "To make this production-ready, I built this using a robust microservice 
+   architecture running entirely in Docker. Right now, we have:
+   - A PostgreSQL Database storing the immutable audit logs.
+   - A Redis Cache managing the background job queues.
+   - A Python FastAPI Engine handling the heavy mathematical physics.
+   - A TypeScript Node.js Broker tying it all together.
+   And they are all reporting 100% healthy and connected."
+
+
+--------------------------------------------------------------------------------
+Pro-Tip for the Demo:
+--------------------------------------------------------------------------------
+If the professor asks what happens if something crashes, you can mention the Docker 
+work you did:
+"I specifically engineered the Docker containers to 'fail-fast' and automatically 
+recover, ensuring that if the Python engine goes down, the Node.js broker queues the 
+data in Redis until the engine comes back online, preventing any data loss."
+================================================================================

@@ -100,7 +100,8 @@ vi.mock("ioredis", () => ({
 
 describe("Belief-Update Negotiation Gate ", () => {
   let io: Server;
-  let clientSocket: Socket;
+  let clientSocket1: Socket;
+  let clientSocket2: Socket;
   let port: number;
 
   beforeAll(async () => {
@@ -111,61 +112,73 @@ describe("Belief-Update Negotiation Gate ", () => {
     await new Promise<void>((resolve) => {
       httpServer.listen(() => {
         port = (httpServer.address() as any).port;
-        clientSocket = Client(`http://localhost:${port}/negotiate`);
-        clientSocket.on("connect", resolve);
+        clientSocket1 = Client(`http://localhost:${port}/negotiate`, { query: { agentId: "agent-free-1" }});
+        clientSocket2 = Client(`http://localhost:${port}/negotiate`, { query: { agentId: "agent-free-2" }});
+        
+        let connected = 0;
+        const check = () => { if (++connected === 2) resolve(); };
+        clientSocket1.on("connect", check);
+        clientSocket2.on("connect", check);
       });
     });
   });
 
   afterAll(() => {
     io.close();
-    clientSocket.disconnect();
+    clientSocket1.disconnect();
+    clientSocket2.disconnect();
   });
 
   beforeEach(() => {
     pendingAgents.clear();
-    clientSocket.removeAllListeners();
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ action: "ACCEPT", decision_source: "LLM" }),
-    });
+    clientSocket1.removeAllListeners();
+    clientSocket2.removeAllListeners();
+    
+    const handler = (data: any, socket: Socket) => {
+      socket.emit("agent_action", {
+        negotiationId: data.negotiationId,
+        action: "ACCEPT",
+        decision_source: "LLM"
+      });
+    };
+    
+    clientSocket1.on("your_turn", (data) => handler(data, clientSocket1));
+    clientSocket2.on("your_turn", (data) => handler(data, clientSocket2));
   });
 
   // ── Gate test 1: Agent with PENDING belief update is blocked ───────────────
 
   it("T1: emits belief_update_pending when agentId1 has a pending belief update", async () => {
-    pendingAgents.add("agent-pending");
+    pendingAgents.add("agent-free-1");
 
     const deferred = new Promise<any>((resolve) => {
-      clientSocket.on("belief_update_pending", resolve);
+      clientSocket1.on("belief_update_pending", resolve);
     });
 
-    clientSocket.emit("start_negotiation", {
-      agentId1: "agent-pending",
-      agentId2: "agent-ready",
+    clientSocket1.emit("start_negotiation", {
+      agentIds: ["agent-free-1", "agent-free-2"],
       initialSurplus: 100.0,
     });
 
     const payload = await deferred;
-    expect(payload.agentId).toBe("agent-pending");
-    expect(payload.message).toContain("Negotiation deferred");
+    expect(payload.agents).toContain("agent-free-1");
+    expect(payload.message).toContain("pending");
   });
 
   it("T2: emits belief_update_pending when agentId2 has a pending belief update", async () => {
-    pendingAgents.add("agent-also-pending");
+    pendingAgents.add("agent-free-2");
 
     const deferred = new Promise<any>((resolve) => {
-      clientSocket.on("belief_update_pending", resolve);
+      clientSocket1.on("belief_update_pending", resolve);
     });
 
-    clientSocket.emit("start_negotiation", {
-      agentId1: "agent-ready",
-      agentId2: "agent-also-pending",
+    clientSocket1.emit("start_negotiation", {
+      agentIds: ["agent-free-1", "agent-free-2"],
       initialSurplus: 100.0,
     });
 
     const payload = await deferred;
-    expect(payload.agentId).toBe("agent-also-pending");
+    expect(payload.agents).toContain("agent-free-2");
   });
 
   // ── Gate test 2: Once COMPLETE, negotiation proceeds ──────────────────────
@@ -174,16 +187,15 @@ describe("Belief-Update Negotiation Gate ", () => {
     // No agents in pendingAgents → gate is open
 
     const statusReceived = new Promise<any>((resolve) => {
-      clientSocket.on("status", resolve);
+      clientSocket1.on("status", resolve);
     });
     const rejectedOrComplete = new Promise<any>((resolve) => {
-      clientSocket.on("negotiation_complete", resolve);
-      clientSocket.on("stability_rejected", resolve);
+      clientSocket1.on("negotiation_complete", resolve);
+      clientSocket1.on("stability_rejected", resolve);
     });
 
-    clientSocket.emit("start_negotiation", {
-      agentId1: "agent-free-1",
-      agentId2: "agent-free-2",
+    clientSocket1.emit("start_negotiation", {
+      agentIds: ["agent-free-1", "agent-free-2"],
       initialSurplus: 100.0,
     });
 
@@ -198,36 +210,48 @@ describe("Belief-Update Negotiation Gate ", () => {
   // ── Gate test 3: Blocking then releasing ──────────────────────────────────
 
   it("T4: agent blocked while PENDING, then passes once cleared", async () => {
-    pendingAgents.add("agent-transition");
+    pendingAgents.add("agent-free-1");
 
     // First attempt → blocked
     const firstDeferred = new Promise<any>((resolve) => {
-      clientSocket.on("belief_update_pending", resolve);
+      clientSocket1.on("belief_update_pending", resolve);
     });
-    clientSocket.emit("start_negotiation", {
-      agentId1: "agent-transition",
-      agentId2: "agent-free-3",
+    clientSocket1.emit("start_negotiation", {
+      agentIds: ["agent-free-1", "agent-free-2"],
       initialSurplus: 50.0,
     });
     const blocked = await firstDeferred;
-    expect(blocked.agentId).toBe("agent-transition");
+    expect(blocked.agents).toContain("agent-free-1");
 
     // Clear the pending state (simulate belief update completing)
-    pendingAgents.delete("agent-transition");
-    clientSocket.removeAllListeners();
+    pendingAgents.delete("agent-free-1");
+    clientSocket1.removeAllListeners();
+    clientSocket2.removeAllListeners();
+
+    // After removing listeners, add the turn handler back
+    const handler = (data: any, socket: Socket) => {
+      socket.emit("agent_action", {
+        negotiationId: data.negotiationId,
+        action: "ACCEPT",
+        decision_source: "LLM"
+      });
+    };
+    clientSocket1.on("your_turn", (data) => handler(data, clientSocket1));
+    clientSocket2.on("your_turn", (data) => handler(data, clientSocket2));
 
     // Second attempt → gate open, session starts
     const statusReceived = new Promise<any>((resolve) => {
-      clientSocket.on("status", resolve);
+      clientSocket1.on("status", resolve);
     });
     const completed = new Promise<any>((resolve) => {
-      clientSocket.on("negotiation_complete", resolve);
-      clientSocket.on("stability_rejected", resolve);
+      clientSocket1.on("negotiation_complete", resolve);
+      clientSocket1.on("stability_rejected", resolve);
     });
 
-    clientSocket.emit("start_negotiation", {
-      agentId1: "agent-transition",
-      agentId2: "agent-free-3",
+    // NOTE: Need to use agent-free-1 as it is the ID for socket1, and agent-free-2 for socket2.
+    // So that they can actually receive the 'your_turn' messages.
+    clientSocket1.emit("start_negotiation", {
+      agentIds: ["agent-free-1", "agent-free-2"],
       initialSurplus: 50.0,
     });
 
