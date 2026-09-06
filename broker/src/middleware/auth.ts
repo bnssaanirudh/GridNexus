@@ -22,6 +22,7 @@ export interface AuthenticatedUser {
   email: string;
   role: string;
   microgridId?: string;
+  microgridIds?: string[];
 }
 
 // Extend Express Request to carry the decoded user
@@ -74,6 +75,7 @@ export function requireAuth(requiredRoles?: Role[]) {
       email: payload.email as string,
       role: payload.role as string,
       microgridId: payload.microgridId as string | undefined,
+      microgridIds: payload.microgridIds as string[] | undefined,
     };
     req.user = user;
 
@@ -102,6 +104,7 @@ export function verifySocketToken(token: string): AuthenticatedUser {
     email: payload.email as string,
     role: payload.role as string,
     microgridId: payload.microgridId as string | undefined,
+    microgridIds: payload.microgridIds as string[] | undefined,
   };
 }
 
@@ -115,6 +118,7 @@ export function signToken(user: AuthenticatedUser): string {
       email: user.email,
       role: user.role,
       microgridId: user.microgridId,
+      microgridIds: user.microgridIds,
     },
     secret,
     { expiresIn } as jwt.SignOptions

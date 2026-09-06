@@ -32,7 +32,10 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
 
   let user;
   try {
-    user = await prisma.user.findUnique({ where: { email: String(email) } });
+    user = await prisma.user.findUnique({ 
+      where: { email: String(email) },
+      include: { memberships: true }
+    });
   } catch (err) {
     res.status(503).json({ error: "SERVICE_UNAVAILABLE", message: "Database unavailable." });
     return;
@@ -47,11 +50,14 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  const microgridIds = user.memberships?.map((m) => m.microgridId) || [];
+
   const token = signToken({
     userId: user.id,
     email: user.email,
     role: user.role,
     microgridId: user.microgridId ?? undefined,
+    microgridIds,
   });
 
   const expiresIn = process.env.JWT_EXPIRES_IN ?? "8h";
@@ -64,6 +70,7 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
       email: user.email,
       role: user.role,
       microgridId: user.microgridId,
+      microgridIds,
     },
   });
 });

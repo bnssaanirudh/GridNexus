@@ -29,6 +29,7 @@ model Microgrid {
   transfersIn           EnergyTransfer[]  @relation("TransfersIn")
   ders                  DER[]
   busMappings           MicrogridBusMapping[]
+  memberships           UserMicrogridMembership[]
 
   @@map("microgrids")
 }
@@ -374,9 +375,28 @@ model User {
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
 
+  memberships  UserMicrogridMembership[]
+
   @@index([email])
   @@index([username])
   @@map("users")
+}
+
+model UserMicrogridMembership {
+  id          String    @id @default(uuid())
+  userId      String
+  microgridId String
+  role        String    @default("OWNER") // OWNER | OPERATOR | VIEWER
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  microgrid   Microgrid @relation(fields: [microgridId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, microgridId])
+  @@index([userId])
+  @@index([microgridId])
+  @@map("user_microgrid_memberships")
 }
 
 // -- Settlement Lifecycle -------------------------------------------------

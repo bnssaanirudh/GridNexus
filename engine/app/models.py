@@ -23,6 +23,7 @@ class Microgrid(Base):
     agents = relationship("Agent", back_populates="microgrid")
     ders = relationship("DER", back_populates="microgrid")
     busMappings = relationship("MicrogridBusMapping", back_populates="microgrid")
+    memberships = relationship("UserMicrogridMembership", back_populates="microgrid", cascade="all, delete-orphan")
 
 class Agent(Base):
     __tablename__ = "agents"
@@ -107,6 +108,20 @@ class TopologyRevision(Base):
     notes = Column(String, nullable=True)
 
 
+class UserMicrogridMembership(Base):
+    __tablename__ = "user_microgrid_memberships"
+
+    id = Column(String, primary_key=True)
+    userId = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    microgridId = Column(String, ForeignKey("microgrids.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(30), nullable=False, default="OWNER")
+    createdAt = Column(DateTime(timezone=True), server_default=func.now())
+    updatedAt = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="memberships")
+    microgrid = relationship("Microgrid", back_populates="memberships")
+
+
 class User(Base):
     """Platform user for JWT authentication and RBAC."""
     __tablename__ = "users"
@@ -119,3 +134,6 @@ class User(Base):
     active       = Column(Boolean,     nullable=False, default=True)
     createdAt    = Column(DateTime(timezone=True), server_default=func.now())
     updatedAt    = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    microgridId  = Column(String, nullable=True)
+
+    memberships  = relationship("UserMicrogridMembership", back_populates="user", cascade="all, delete-orphan")
