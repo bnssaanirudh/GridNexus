@@ -24,6 +24,7 @@ class Microgrid(Base):
     ders = relationship("DER", back_populates="microgrid")
     busMappings = relationship("MicrogridBusMapping", back_populates="microgrid")
     memberships = relationship("UserMicrogridMembership", back_populates="microgrid", cascade="all, delete-orphan")
+    tradingPreference = relationship("TradingPreference", back_populates="microgrid", uselist=False, cascade="all, delete-orphan")
 
 class Agent(Base):
     __tablename__ = "agents"
@@ -162,3 +163,21 @@ class User(Base):
 
     memberships  = relationship("UserMicrogridMembership", back_populates="user", cascade="all, delete-orphan")
     onboarding   = relationship("UserOnboarding", back_populates="user", uselist=False, cascade="all, delete-orphan")
+
+
+class TradingPreference(Base):
+    __tablename__ = "trading_preferences"
+
+    id = Column(String, primary_key=True)
+    microgridId = Column(String, ForeignKey("microgrids.id", ondelete="CASCADE"), nullable=False, unique=True)
+    tradingEnabled = Column(Boolean, nullable=False, default=True)
+    minimumBatteryReservePct = Column(Numeric(10, 4), nullable=False, default=20.0)
+    maximumDailyExportKwh = Column(Numeric(10, 4), nullable=True)
+    minimumPreferredSalePrice = Column(Numeric(10, 4), nullable=True)
+    maximumPreferredBuyPrice = Column(Numeric(10, 4), nullable=True)
+    riskProfile = Column(String(30), nullable=False, default="BALANCED")
+    maxTransactionSizeKwh = Column(Numeric(10, 4), nullable=True)
+    createdAt = Column(DateTime(timezone=True), server_default=func.now())
+    updatedAt = Column(DateTime(timezone=True), onupdate=func.now())
+
+    microgrid = relationship("Microgrid", back_populates="tradingPreference")

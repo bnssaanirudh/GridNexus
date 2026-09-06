@@ -9,6 +9,8 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../db/prisma.js";
+import { getPreferences, upsertPreferences, validatePreferenceInput } from "../services/preferenceService.js";
+import { appendAuditEvent } from "../services/auditChain.js";
 
 export const meRouter = Router();
 
@@ -481,3 +483,120 @@ meRouter.get("/audit", async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 });
+
+/**
+ * GET /api/me/preferences
+ * Returns owner-configured trading preferences and safety constraints.
+ */
+meRouter.get("/preferences", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const authorizedMicrogridIds = await getAuthorizedMicrogridIds(userId);
+
+    const queryMicrogridId = req.query.microgridId as string | undefined;
+    if (queryMicrogridId) {
+      if (!authorizedMicrogridIds.includes(queryMicrogridId)) {
+        res.status(403).json({
+          error: "FORBIDDEN",
+          message: "You are not authorized for this microgrid.",
+        });
+        return;
+      }
+      const pref = await getPreferences(queryMicrogridId);
+      res.json(pref);
+      return;
+    }
+
+    if (authorizedMicrogridIds.length === 0) {
+      res.status(404).json({
+        error: "NOT_FOUND",
+        message: "No microgrids provisioned for authenticated user.",
+      });
+      return;
+    }
+
+    if (authorizedMicrogridIds.length === 1) {
+      const pref = await getPreferences(authorizedMicrogridIds[0]);
+      res.json(pref);
+      return;
+    }
+
+    const allPrefs = await Promise.all(
+      authorizedMicrogridIds.map((mgId) => getPreferences(mgId))
+    );
+    res.json(allPrefs);
+  } catch (error) {
+    console.error("[Me] Failed to get preferences:", error);
+    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  }
+});
+
+/**
+ * PUT /api/me/preferences
+ * PATCH /api/me/preferences
+ * Updates owner trading preferences and safety constraints.
+ */
+async function handleUpdatePreferences(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const authorizedMicrogridIds = await getAuthorizedMicrogridIds(userId);
+
+    const targetMicrogridId =
+      req.body.microgridId || (authorizedMicrogridIds.length === 1 ? authorizedMicrogridIds[0] : null);
+
+    if (!targetMicrogridId) {
+      res.status(400).json({
+        error: "MISSING_MICROGRID_ID",
+        message: "microgridId is required.",
+      });
+      return;
+    }
+
+    if (!authorizedMicrogridIds.includes(targetMicrogridId)) {
+      res.status(403).json({
+        error: "FORBIDDEN",
+        message: "You do not own this microgrid.",
+      });
+      return;
+    }
+
+    try {
+      validatePreferenceInput(req.body);
+    } catch (valErr) {
+      res.status(400).json({
+        error: "INVALID_PREFERENCE_INPUT",
+        message: (valErr as Error).message,
+      });
+      return;
+    }
+
+    // Execute in transaction to update preferences and append to audit chain atomically
+    const updated = await prisma.$transaction(async (tx) => {
+      const saved = await upsertPreferences(targetMicrogridId, req.body, tx as any);
+      await appendAuditEvent(tx as any, {
+        eventType: "PREFERENCES_UPDATED",
+        actorId: userId,
+        payload: {
+          microgridId: targetMicrogridId,
+          tradingEnabled: saved.tradingEnabled,
+          minimumBatteryReservePct: saved.minimumBatteryReservePct,
+          maximumDailyExportKwh: saved.maximumDailyExportKwh,
+          minimumPreferredSalePrice: saved.minimumPreferredSalePrice,
+          maximumPreferredBuyPrice: saved.maximumPreferredBuyPrice,
+          riskProfile: saved.riskProfile,
+          maxTransactionSizeKwh: saved.maxTransactionSizeKwh,
+        },
+      });
+      return saved;
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("[Me] Failed to update preferences:", error);
+    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  }
+}
+
+meRouter.put("/preferences", handleUpdatePreferences);
+meRouter.patch("/preferences", handleUpdatePreferences);
+

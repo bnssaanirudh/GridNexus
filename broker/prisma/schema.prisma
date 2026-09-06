@@ -30,6 +30,7 @@ model Microgrid {
   ders                  DER[]
   busMappings           MicrogridBusMapping[]
   memberships           UserMicrogridMembership[]
+  tradingPreference     TradingPreference?
 
   @@map("microgrids")
 }
@@ -480,4 +481,24 @@ model AuditEvent {
   @@index([negotiationId])
   @@index([sequence])
   @@map("audit_events")
+}
+
+// -- Owner Trading Preferences & Constraints -------------------------------
+
+model TradingPreference {
+  id                         String    @id @default(uuid())
+  microgridId                String    @unique
+  tradingEnabled             Boolean   @default(true)
+  minimumBatteryReservePct   Decimal   @default(20.0000) @db.Decimal(10, 4)
+  maximumDailyExportKwh      Decimal?  @db.Decimal(10, 4)
+  minimumPreferredSalePrice  Decimal?  @db.Decimal(10, 4)
+  maximumPreferredBuyPrice   Decimal?  @db.Decimal(10, 4)
+  riskProfile                String    @default("BALANCED") // CONSERVATIVE | BALANCED | AGGRESSIVE
+  maxTransactionSizeKwh      Decimal?  @db.Decimal(10, 4)
+  createdAt                  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt                  DateTime  @updatedAt @db.Timestamptz(6)
+
+  microgrid                  Microgrid @relation(fields: [microgridId], references: [id], onDelete: Cascade)
+
+  @@map("trading_preferences")
 }

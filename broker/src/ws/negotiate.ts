@@ -7,6 +7,12 @@ import { GridGate } from "../services/gridGate.js";
 import { hasAgentPendingBeliefUpdate } from "../services/beliefUpdateService.js";
 import { isProduction } from "../config.js";
 import { verifySocketToken } from "../middleware/auth.js";
+import { appendAuditEvent } from "../services/auditChain.js";
+import {
+  getPreferences,
+  validateActionAgainstPreferences,
+  type ValidationResult,
+} from "../services/preferenceService.js";
 
 const prisma = new PrismaClient();
 
@@ -264,6 +270,22 @@ export function setupNegotiationNamespace(io: Server) {
           }
         }
 
+        for (const participant of participants) {
+          try {
+            const pref = await getPreferences(participant.microgridId, prisma);
+            if (!pref.tradingEnabled) {
+              socket.emit("protocol_error", {
+                code: "TRADING_DISABLED",
+                message: `Trading is disabled by owner preferences for participant ${participant.id} (microgrid ${participant.microgridId}).`,
+              });
+              return;
+            }
+          } catch (error) {
+            if (failClosed) throw error;
+            console.warn("[WS] Preference check unavailable in simulation/test mode.");
+          }
+        }
+
         let negId = data.negotiationId;
         if (negId) {
           try {
@@ -403,6 +425,129 @@ export function setupNegotiationNamespace(io: Server) {
           message: "Use a supported action and finite values: price >= 0 and kWh > 0.",
         });
         return;
+      }
+
+      if (negState.participants.length === 0 && negState.agentIds.length > 0) {
+        try {
+          negState.participants = await prisma.agent.findMany({
+            where: { id: { in: negState.agentIds } },
+            select: { id: true, microgridId: true, type: true },
+          });
+        } catch {
+          // simulation fallback
+        }
+      }
+
+      const sellerTypes = new Set(["SELLER", "PRODUCER", "GENERATOR"]);
+      const buyerTypes = new Set(["BUYER", "CONSUMER", "LOAD"]);
+
+      try {
+        const activeParticipant = negState.participants.find((p) => p.id === negState.activeAgent);
+        if (activeParticipant && (data.action === "COUNTER_OFFER" || data.action === "ACCEPT")) {
+          const activeRole = sellerTypes.has(activeParticipant.type.toUpperCase()) ? "SELLER" : "BUYER";
+          const valResult = await validateActionAgainstPreferences(
+            {
+              microgridId: activeParticipant.microgridId,
+              agentId: activeParticipant.id,
+              role: activeRole,
+              action: data.action,
+              price: data.counterOfferPrice as number,
+              kwh: data.counterRequestedKwh as number,
+            },
+            prisma
+          );
+
+          if (!valResult.satisfied) {
+            try {
+              await prisma.$transaction(async (tx) => {
+                await appendAuditEvent(tx as any, {
+                  eventType: "VALIDATION_FAILED",
+                  negotiationId: negState.negId,
+                  actorId: negState.activeAgent,
+                  payload: {
+                    stage: "OWNER_PREFERENCE_CONSTRAINT",
+                    code: valResult.code,
+                    reason: valResult.reason,
+                    details: valResult.details,
+                    attemptedAction: data.action,
+                    price: data.counterOfferPrice,
+                    kwh: data.counterRequestedKwh,
+                  },
+                });
+              });
+            } catch (auditErr) {
+              console.warn("[WS] Audit logging failed for constraint violation:", auditErr);
+            }
+
+            socket.emit("protocol_error", {
+              code: "CONSTRAINT_VIOLATION",
+              message: `Owner constraint violated: ${valResult.reason}`,
+              details: valResult.details,
+            });
+            return;
+          }
+
+          if (data.action === "ACCEPT") {
+            const opponentParticipant = negState.participants.find(
+              (p) => p.id === negState.opponentAgent
+            );
+            if (opponentParticipant) {
+              const oppRole = sellerTypes.has(opponentParticipant.type.toUpperCase())
+                ? "SELLER"
+                : "BUYER";
+              const oppValResult = await validateActionAgainstPreferences(
+                {
+                  microgridId: opponentParticipant.microgridId,
+                  agentId: opponentParticipant.id,
+                  role: oppRole,
+                  action: "ACCEPT",
+                  price: data.counterOfferPrice as number,
+                  kwh: data.counterRequestedKwh as number,
+                },
+                prisma
+              );
+
+              if (!oppValResult.satisfied) {
+                try {
+                  await prisma.$transaction(async (tx) => {
+                    await appendAuditEvent(tx as any, {
+                      eventType: "VALIDATION_FAILED",
+                      negotiationId: negState.negId,
+                      actorId: negState.opponentAgent,
+                      payload: {
+                        stage: "OWNER_PREFERENCE_CONSTRAINT",
+                        code: oppValResult.code,
+                        reason: oppValResult.reason,
+                        details: oppValResult.details,
+                        attemptedAction: data.action,
+                        price: data.counterOfferPrice,
+                        kwh: data.counterRequestedKwh,
+                      },
+                    });
+                  });
+                } catch (auditErr) {
+                  console.warn("[WS] Audit logging failed for constraint violation:", auditErr);
+                }
+
+                socket.emit("protocol_error", {
+                  code: "CONSTRAINT_VIOLATION",
+                  message: `Owner constraint violated: ${oppValResult.reason}`,
+                  details: oppValResult.details,
+                });
+                return;
+              }
+            }
+          }
+        }
+      } catch (prefErr) {
+        if (failClosed) {
+          socket.emit("protocol_error", {
+            code: "CONSTRAINT_EVALUATION_FAILED",
+            message: "Failed to evaluate owner constraints safely.",
+          });
+          return;
+        }
+        console.warn("[WS] Preference validation unavailable in simulation/test mode:", prefErr);
       }
 
       const currentSurplus =
