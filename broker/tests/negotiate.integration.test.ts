@@ -2,13 +2,18 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 
 // Mock StabilityGate so the ACCEPT branch doesn't require a live Redis / BullMQ worker.
 // The real gate is tested in tests/integration/stability-gate.test.ts.
-const { mockStabilityGateCheck } = vi.hoisted(() => {
+const { mockStabilityGateCheck, mockGridGateCheck } = vi.hoisted(() => {
   const mockStabilityGateCheck = vi.fn().mockResolvedValue({ passed: true, checkId: "sc-ci-mock", isStable: true, margin: 10.0 });
-  return { mockStabilityGateCheck };
+  const mockGridGateCheck = vi.fn().mockResolvedValue({ passed: true, certId: "grid-ci-mock" });
+  return { mockStabilityGateCheck, mockGridGateCheck };
 });
 
 vi.mock("../src/services/stabilityGate.js", () => ({
   StabilityGate: { check: mockStabilityGateCheck }
+}));
+
+vi.mock("../src/services/gridGate.js", () => ({
+  GridGate: { check: mockGridGateCheck }
 }));
 
 import { createServer } from "http";
@@ -50,6 +55,7 @@ describe("WebSocket Negotiation Integration", () => {
     vi.restoreAllMocks();
     // Re-wire after restoreAllMocks so the gate never calls BullMQ.
     mockStabilityGateCheck.mockResolvedValue({ passed: true, checkId: "sc-ci-mock", isStable: true, margin: 10.0 });
+    mockGridGateCheck.mockResolvedValue({ passed: true, certId: "grid-ci-mock" });
     if (clientSocket) {
       clientSocket.removeAllListeners();
     }
