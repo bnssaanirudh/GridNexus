@@ -217,6 +217,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
     clientSocket?.disconnect();
     // Cleanup in FK-safe order using raw SQL to bypass any append-only triggers
     try {
+      await prisma.settlement.deleteMany({});
       await prisma.energyTransfer.deleteMany({});
       await prisma.rlReward.deleteMany({});
       await prisma.beliefUpdate.deleteMany({});

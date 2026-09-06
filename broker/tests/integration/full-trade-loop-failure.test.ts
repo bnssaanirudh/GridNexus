@@ -59,6 +59,7 @@ describe("Full Trade-Loop Failure Injection", () => {
   afterAll(async () => {
     // cleanup – FK order matters; raw SQL bypasses any append-only triggers
     try {
+      await prisma.settlement.deleteMany({});
       await prisma.energyTransfer.deleteMany({});
       await prisma.rlReward.deleteMany({});
       await prisma.beliefUpdate.deleteMany({});
@@ -73,6 +74,7 @@ describe("Full Trade-Loop Failure Injection", () => {
 
   beforeEach(async () => {
     // Purge any rows written by a previous test run in this suite
+    await prisma.settlement.deleteMany({});
     await prisma.energyTransfer.deleteMany({});
     await prisma.rlReward.deleteMany({});
     await prisma.negotiationRound.deleteMany({ where: { negotiationId: negotiation.id } });

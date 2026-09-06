@@ -108,7 +108,8 @@ describe("Full Trade-Loop Integration", () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     clientSocket.removeAllListeners();
-    // Purge rows created during the test (FK order matters; use raw SQL to bypass any append-only trigger)
+    // Purge rows created during the test (FK order matters)
+    await prisma.settlement.deleteMany({});
     await prisma.energyTransfer.deleteMany({});
     await prisma.rlReward.deleteMany({});
     await prisma.beliefUpdate.deleteMany({});

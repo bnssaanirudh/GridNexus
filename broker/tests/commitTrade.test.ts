@@ -63,7 +63,8 @@ describe("commitTrade Transaction", () => {
         activeAgentId: agent1.id,
         opponentAgentId: agent1.id,
         action: "ACCEPT",
-        surplus: 10.0
+        surplus: 10.0,
+        decisionSource: "LLM"
       },
       rlReward: {
         agentId: agent1.id,
@@ -111,7 +112,8 @@ describe("commitTrade Transaction", () => {
           activeAgentId: agent1.id,
           opponentAgentId: agent1.id,
           action: "ACCEPT",
-          surplus: 10.0
+          surplus: 10.0,
+          decisionSource: "LLM"
         },
         rlReward: {
           agentId: agent1.id,

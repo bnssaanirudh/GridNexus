@@ -60,6 +60,7 @@ describe("WebSocket Negotiation Integration", () => {
       clientSocket.removeAllListeners();
     }
     // Clean DB for clean tests (FK order: energytransfers before microgrids)
+    await prisma.settlement.deleteMany({});
     await prisma.energyTransfer.deleteMany({});
     await prisma.beliefUpdate.deleteMany({});
     await prisma.rlReward.deleteMany({});
