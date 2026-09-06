@@ -70,6 +70,7 @@ describe("WebSocket Negotiation Integration", () => {
     await prisma.negotiation.deleteMany({});
     await prisma.agent.deleteMany({});
     await prisma.stabilityCheck.deleteMany({});
+    await prisma.dER.deleteMany({});
     await prisma.microgrid.deleteMany({});
 
 

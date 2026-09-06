@@ -100,6 +100,7 @@ describe("Full Trade-Loop Integration", () => {
       await prisma.negotiation.deleteMany({});
       await prisma.stabilityCheck.deleteMany({});
       await prisma.agent.deleteMany({});
+      await prisma.dER.deleteMany({});
       await prisma.microgrid.deleteMany({});
     } catch (_) { /* ignore */ }
     await prisma.$disconnect();

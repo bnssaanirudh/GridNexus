@@ -227,6 +227,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
       await prisma.negotiation.deleteMany({});
       await prisma.stabilityCheck.deleteMany({});
       await prisma.agent.deleteMany({});
+      await prisma.dER.deleteMany({});
       await prisma.microgrid.deleteMany({});
     } catch (_) { /* ignore if DB is offline */ }
     await prisma.$disconnect();

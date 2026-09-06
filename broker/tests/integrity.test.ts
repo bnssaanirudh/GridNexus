@@ -66,6 +66,7 @@ describe("Audit Trail Hardening ", () => {
       await prisma.agent.deleteMany({});
       await prisma.negotiation.deleteMany({});
       await prisma.stabilityCheck.deleteMany({});
+      await prisma.dER.deleteMany({});
       await prisma.microgrid.deleteMany({});
     } catch (e) {
       console.warn("Database unavailable. These tests require a live Postgres instance with triggers installed.");
