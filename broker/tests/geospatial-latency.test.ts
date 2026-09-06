@@ -21,8 +21,10 @@ import { PrismaClient } from "@prisma/client";
 
 vi.mock("@prisma/client", () => {
   return {
-    PrismaClient: vi.fn().mockImplementation(() => ({
-      $connect: vi.fn(),
+    PrismaClient: class {
+      constructor() {
+        return {
+          $connect: vi.fn(),
       $disconnect: vi.fn(),
       $executeRawUnsafe: vi.fn().mockResolvedValue([]),
       bus: {
@@ -52,7 +54,9 @@ vi.mock("@prisma/client", () => {
       oracleSignal: {
         count: vi.fn().mockResolvedValue(20),
       },
-    }))
+        };
+      }
+    }
   };
 });
 
