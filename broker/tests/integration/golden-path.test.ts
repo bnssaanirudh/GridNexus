@@ -279,6 +279,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
       if (engineCalls < 3) {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "COUNTER_OFFER",
           decision_source: "LLM",
           counter_offer_price: 8.0 + engineCalls,
@@ -287,6 +288,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
       } else {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "ACCEPT",
           decision_source: "ORACLE_SIGNAL",
         });

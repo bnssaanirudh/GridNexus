@@ -1,5 +1,5 @@
 import { Worker, Job } from "bullmq";
-import { connection, StabilityJobPayload } from "./queues/index.js";
+import { connection, qPrefix, StabilityJobPayload } from "./queues/index.js";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import { isProduction } from "./config.js";
@@ -19,7 +19,7 @@ export const AlertService = {
 };
 
 const stabilityWorker = new Worker<StabilityJobPayload>(
-  "stability-jobs",
+  `${qPrefix}stability-jobs`,
   async (job: Job<StabilityJobPayload>) => {
     const { coalition } = job.data;
     
@@ -74,7 +74,7 @@ const stabilityWorker = new Worker<StabilityJobPayload>(
         },
       });
     } catch (error) {
-      if (isProduction()) throw error;
+      if (process.env.FORCE_ENGINE_ERROR === "true" || isProduction()) throw error;
       console.warn("[Mock] Stability result persistence unavailable in simulation mode.");
       check = {
         id: `simulation-${job.id ?? Date.now()}`,
@@ -107,7 +107,7 @@ export async function closeWorker() {
 import { GridJobPayload, gridQueue } from "./queues/index.js";
 
 const gridWorker = new Worker<GridJobPayload>(
-  "grid-jobs",
+  `${qPrefix}grid-jobs`,
   async (job: Job<GridJobPayload>) => {
     // 1. Send the topology and injection payload to Engine
     let feasible = false;

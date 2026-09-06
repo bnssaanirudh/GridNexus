@@ -1,6 +1,6 @@
 import { Namespace } from "socket.io";
 import { enqueueStabilityCheck } from "../queues/stabilityQueue.js";
-import { stabilityQueue } from "../queues/index.js";
+import { stabilityQueue, qPrefix } from "../queues/index.js";
 import { QueueEvents } from "bullmq";
 import { prisma } from "./commitTrade.js";
 import dotenv from "dotenv";
@@ -34,7 +34,7 @@ export class StabilityGate {
    * On unstable, marks the negotiation as REJECTED, notifies both agents via WS, and returns { passed: false }.
    */
   static async check(ctx: StabilityGateContext): Promise<StabilityGateResult> {
-    const queueEvents = new QueueEvents("stability-jobs", { connection: { url: REDIS_URL } });
+    const queueEvents = new QueueEvents(`${qPrefix}stability-jobs`, { connection: { url: REDIS_URL } });
 
     try {
       // 1. Resolve microgrid IDs and load profiles for all agents in the proposed coalition

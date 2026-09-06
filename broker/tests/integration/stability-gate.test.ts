@@ -120,6 +120,7 @@ vi.mock("../../src/services/gridGate.js", () => ({
 
 
 vi.mock("../../src/queues/index", () => ({
+  qPrefix: "test-prefix-",
   stabilityQueue: {
     add: vi.fn().mockResolvedValue({
       waitUntilFinished: vi.fn().mockImplementation(async () => {

@@ -22,15 +22,17 @@ describe("Stability Worker DLQ", () => {
     const alertSpy = vi.spyOn(workerModule.AlertService, "alertWebhookStub");
     
     // Enqueue 1 job
-    await enqueueStabilityCheck(["mg-fail-1"]);
+    const job = await enqueueStabilityCheck(["mg-fail-1"]);
 
     // wait for it to fail 5 times (attempts = 5)
     let hasFailed = false;
     let retries = 0;
     
     while (!hasFailed && retries < 120) { // wait up to 60 seconds
-      const counts = await stabilityQueue.getJobCounts("failed");
-      if (counts.failed > 0 || alertSpy.mock.calls.length > 0) {
+      const counts = await stabilityQueue.getJobCounts();
+      const state = await job?.getState();
+      console.log('counts:', counts, 'state:', state, 'attempts:', job?.attemptsMade);
+      if (counts.failed > 0 || alertSpy.mock.calls.length > 0 || state === 'failed') {
         hasFailed = true;
       } else {
         await new Promise(resolve => setTimeout(resolve, 500));

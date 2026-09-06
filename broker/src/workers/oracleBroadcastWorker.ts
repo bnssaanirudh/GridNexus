@@ -22,7 +22,7 @@
 
 import { Worker, Job } from "bullmq";
 import { PrismaClient } from "@prisma/client";
-import { connection } from "../queues/index.js";
+import { connection, qPrefix } from "../queues/index.js";
 import type { OracleBroadcastJobPayload } from "../queues/oracleBroadcastQueue.js";
 import { runBeliefUpdateCycle } from "../services/beliefUpdateService.js";
 import { isProduction } from "../config.js";
@@ -161,7 +161,7 @@ export const oracleBroadcastWorker = new Worker<
   OracleBroadcastJobPayload,
   OracleBroadcastWorkerResult
 >(
-  "oracle-broadcast-jobs",
+  `${qPrefix}oracle-broadcast-jobs`,
   async (job: Job<OracleBroadcastJobPayload>): Promise<OracleBroadcastWorkerResult> => {
     const startedAt = Date.now();
     console.log(

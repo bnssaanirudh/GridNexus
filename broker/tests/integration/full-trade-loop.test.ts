@@ -144,6 +144,7 @@ describe("Full Trade-Loop Integration", () => {
       if (engineCalls < 3) {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "COUNTER_OFFER",
           decision_source: "LLM",
           counter_offer_price: 10.0 + engineCalls,
@@ -152,6 +153,7 @@ describe("Full Trade-Loop Integration", () => {
       } else {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "ACCEPT",
           decision_source: "DQN_GATE",
         });
@@ -164,6 +166,14 @@ describe("Full Trade-Loop Integration", () => {
         expect(data.status).toBe("COMMITTED");
         expect(data.finalRound).toBe(3);
         resolve();
+      });
+      clientSocket.on("protocol_error", (err: any) => {
+        console.error("PROTOCOL ERROR:", err);
+        throw new Error(`Protocol Error: ${err.message}`);
+      });
+      clientSocket.on("settlement_failed", (err: any) => {
+        console.error("SETTLEMENT FAILED:", err);
+        throw new Error(`Settlement Failed: ${err.reason}`);
       });
     });
 
@@ -185,7 +195,7 @@ describe("Full Trade-Loop Integration", () => {
     });
 
     expect(negotiation).not.toBeNull();
-    expect(negotiation!.status).toBe("ACCEPTED");
+    expect(negotiation!.status).toBe("COMMITTED");
 
     // ① At least one NegotiationRound with decision_source = DQN_GATE (note: decision_source not persisted yet by ws)
     // The test previously asserted on beliefUpdates. We'll skip the DQN_GATE assert here if not supported, or check rounds.
@@ -217,6 +227,7 @@ describe("Full Trade-Loop Integration", () => {
     clientSocket.on("your_turn", (data: any) => {
       clientSocket.emit("agent_action", {
         negotiationId: data.negotiationId,
+        agentId: data.activeAgent,
         action: "WALK_AWAY",
         decision_source: "LLM",
       });

@@ -15,7 +15,7 @@
  */
 
 import { Queue } from "bullmq";
-import { connection } from "./index.js";
+import { connection, qPrefix } from "./index.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -28,7 +28,7 @@ export interface OracleBroadcastJobPayload {
 
 /** The BullMQ queue for oracle broadcast cycles. */
 export const oracleBroadcastQueue = new Queue<OracleBroadcastJobPayload>(
-  "oracle-broadcast-jobs",
+  `${qPrefix}oracle-broadcast-jobs`,
   { connection }
 );
 

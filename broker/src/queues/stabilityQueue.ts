@@ -7,7 +7,7 @@ import { stabilityQueue, StabilityJobPayload } from "./index.js";
 export async function enqueueStabilityCheck(coalition: string[], surplusMap?: Record<string, number>) {
   const payload: StabilityJobPayload = { coalition, surplusMap };
   const delay = process.env.NODE_ENV === "test" || process.env.VITEST ? 100 : 1000;
-  await stabilityQueue.add("check-stability", payload, {
+  return await stabilityQueue.add("check-stability", payload, {
     attempts: 5,
     backoff: {
       type: "exponential",

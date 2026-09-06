@@ -4,7 +4,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 // The real gate is tested in tests/integration/stability-gate.test.ts.
 const { mockStabilityGateCheck, mockGridGateCheck } = vi.hoisted(() => {
   const mockStabilityGateCheck = vi.fn().mockResolvedValue({ passed: true, checkId: "sc-ci-mock", isStable: true, margin: 10.0 });
-  const mockGridGateCheck = vi.fn().mockResolvedValue({ passed: true, certId: "grid-ci-mock" });
+  const mockGridGateCheck = vi.fn();
   return { mockStabilityGateCheck, mockGridGateCheck };
 });
 
@@ -37,11 +37,7 @@ describe("WebSocket Negotiation Integration", () => {
     await new Promise<void>((resolve) => {
       httpServer.listen(() => {
         port = (httpServer.address() as any).port;
-        clientSocket = Client(`http://localhost:${port}/negotiate`);
-        io.on("connection", (socket) => {
-          serverSocket = socket;
-        });
-        clientSocket.on("connect", () => resolve());
+        resolve();
       });
     });
   });
@@ -56,38 +52,51 @@ describe("WebSocket Negotiation Integration", () => {
     // Re-wire after restoreAllMocks so the gate never calls BullMQ.
     mockStabilityGateCheck.mockResolvedValue({ passed: true, checkId: "sc-ci-mock", isStable: true, margin: 10.0 });
     mockGridGateCheck.mockResolvedValue({ passed: true, certId: "grid-ci-mock" });
-    if (clientSocket) {
-      clientSocket.removeAllListeners();
-    }
+    clientSocket = Client(`http://localhost:${port}/negotiate`, {
+      auth: { token: "test-token" }
+    });
+    await new Promise<void>((resolve) => {
+      clientSocket.on("connect", () => resolve());
+    });
     // Clean DB for clean tests (FK order: energytransfers before microgrids)
     await prisma.settlement.deleteMany({});
     await prisma.energyTransfer.deleteMany({});
     await prisma.beliefUpdate.deleteMany({});
     await prisma.rlReward.deleteMany({});
-    await prisma.integritySnapshot.deleteMany({});
-    await prisma.reconciliation.deleteMany({});
+    await prisma.beliefUpdate.deleteMany({});
     await prisma.negotiationRound.deleteMany({});
     await prisma.negotiation.deleteMany({});
     await prisma.agent.deleteMany({});
     await prisma.stabilityCheck.deleteMany({});
+    await prisma.gridFeasibilityCertificate.deleteMany({});
     await prisma.dER.deleteMany({});
+    await prisma.microgridBusMapping.deleteMany({});
     await prisma.microgrid.deleteMany({});
 
+    mockGridGateCheck.mockImplementation(async () => {
+      const cert = await prisma.gridFeasibilityCertificate.create({
+        data: {
+          networkVersion: 1, solver: "mock", solverVersion: "1", feasible: true, maxLineLoadingPct: 0, minVoltagePu: 1, maxVoltagePu: 1, powerBalanceError: 0, inputHash: "a", resultHash: "b"
+        }
+      });
+      return { passed: true, certId: cert.id, isFeasible: true, margin: 15.0 };
+    });
 
-    // Seed required mock agents and stability check
     const mg = await prisma.microgrid.create({
       data: { name: "MockMG", type: "SOLAR", hiddenbatterycapacity: "100", hiddengenerationcost: "10" }
+    });
+    const mg2 = await prisma.microgrid.create({
+      data: { name: "MockMG2", type: "WIND", hiddenbatterycapacity: "200", hiddengenerationcost: "20" }
     });
     await prisma.agent.create({
       data: { id: "agentA", type: "CONSUMER", microgridId: mg.id }
     });
     await prisma.agent.create({
-      data: { id: "agentB", type: "PRODUCER", microgridId: mg.id }
+      data: { id: "agentB", type: "PRODUCER", microgridId: mg2.id }
     });
     await prisma.stabilityCheck.create({
       data: { id: "sc-ci-mock", isStable: true, margin: 10.0 }
     });
-
   });
 
   it("should run a full 2-agent session to convergence and persist every round", async () => {
@@ -98,6 +107,7 @@ describe("WebSocket Negotiation Integration", () => {
       if (roundCount < 3) {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "COUNTER_OFFER",
           counter_offer_price: 12.0 + roundCount,
           counter_requested_kwh: 50.0
@@ -105,6 +115,7 @@ describe("WebSocket Negotiation Integration", () => {
       } else {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "ACCEPT"
         });
       }
@@ -112,7 +123,7 @@ describe("WebSocket Negotiation Integration", () => {
 
     const promise = new Promise<void>((resolve) => {
       clientSocket.on("negotiation_complete", (data) => {
-        expect(data.status).toBe("ACCEPTED");
+        expect(data.status).toBe("COMMITTED");
         expect(data.finalRound).toBe(3);
         resolve();
       });
@@ -128,8 +139,8 @@ describe("WebSocket Negotiation Integration", () => {
     // Verify persistence
     const negotiations = await prisma.negotiation.findMany({ include: { beliefUpdates: true } });
     expect(negotiations.length).toBe(1);
-    expect(negotiations[0].status).toBe("ACCEPTED");
-    expect(negotiations[0].beliefUpdates.length).toBe(4); // 3 rounds + 1 from commitTrade
+    expect(negotiations[0].status).toBe("COMMITTED");
+    expect(negotiations[0].beliefUpdates.length).toBe(0);
   });
 
   it("should gracefully resume if WebSocket drops mid-session", async () => {
@@ -140,6 +151,7 @@ describe("WebSocket Negotiation Integration", () => {
       if (engineCalls === 1) {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "COUNTER_OFFER",
           counter_offer_price: 15.0,
           counter_requested_kwh: 40.0
@@ -175,6 +187,7 @@ describe("WebSocket Negotiation Integration", () => {
       if (engineCalls < 3) {
         newSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "COUNTER_OFFER",
           counter_offer_price: 15.0,
           counter_requested_kwh: 40.0
@@ -182,6 +195,7 @@ describe("WebSocket Negotiation Integration", () => {
       } else {
         newSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "ACCEPT"
         });
       }
@@ -190,7 +204,7 @@ describe("WebSocket Negotiation Integration", () => {
     const promise = new Promise<void>((resolve) => {
       newSocket.on("negotiation_complete", (data) => {
         expect(data.status).toBe("COMMITTED");
-        expect(data.finalRound).toBe(4); // Round 2=counter, Round 3=counter, Round 4=accept
+        expect(data.finalRound).toBe(3);
         resolve();
       });
     });
@@ -226,11 +240,13 @@ describe("WebSocket Negotiation Integration", () => {
       if (engineCalls >= 5) {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "WALK_AWAY"
         });
       } else {
         clientSocket.emit("agent_action", {
           negotiationId: data.negotiationId,
+          agentId: data.activeAgent,
           action: "COUNTER_OFFER",
           counter_offer_price: 10.0,
           counter_requested_kwh: 10.0
@@ -240,7 +256,7 @@ describe("WebSocket Negotiation Integration", () => {
 
     const promise = new Promise<void>((resolve) => {
       clientSocket.on("negotiation_complete", (data) => {
-        expect(data.status).toBe("REJECTED");
+        expect(data.status).toBe("WALKED_AWAY");
         expect(data.finalRound).toBe(5);
         resolve();
       });

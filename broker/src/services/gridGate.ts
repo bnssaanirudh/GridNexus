@@ -1,5 +1,5 @@
 import { Namespace } from "socket.io";
-import { gridQueue } from "../queues/index.js";
+import { gridQueue, qPrefix } from "../queues/index.js";
 import { QueueEvents } from "bullmq";
 import { prisma } from "./commitTrade.js";
 import dotenv from "dotenv";
@@ -27,7 +27,7 @@ export class GridGate {
    * Evaluates the physical grid feasibility of a proposed trade using LinDistFlow.
    */
   static async check(ctx: GridGateContext): Promise<GridGateResult> {
-    const queueEvents = new QueueEvents("grid-jobs", { connection: { url: REDIS_URL } });
+    const queueEvents = new QueueEvents(`${qPrefix}grid-jobs`, { connection: { url: REDIS_URL } });
 
     try {
       // 1. Fetch Topology from Prisma

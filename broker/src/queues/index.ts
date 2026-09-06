@@ -34,11 +34,14 @@ export interface GridJobPayload {
   lines: any[];
 }
 
+// Queue names isolated for tests to prevent dangling workers from stealing jobs
+export const qPrefix = process.env.VITEST ? `test-${Date.now()}-` : "";
+
 // Instantiate queues
-export const stabilityQueue = new Queue<StabilityJobPayload>("stability-jobs", { connection });
-export const persuasionQueue = new Queue<PersuasionJobPayload>("persuasion-jobs", { connection });
-export const qreCalibrationQueue = new Queue<QreCalibrationJobPayload>("qre-calibration-jobs", { connection });
-export const gridQueue = new Queue<GridJobPayload>("grid-jobs", { connection });
+export const stabilityQueue = new Queue<StabilityJobPayload>(`${qPrefix}stability-jobs`, { connection });
+export const persuasionQueue = new Queue<PersuasionJobPayload>(`${qPrefix}persuasion-jobs`, { connection });
+export const qreCalibrationQueue = new Queue<QreCalibrationJobPayload>(`${qPrefix}qre-calibration-jobs`, { connection });
+export const gridQueue = new Queue<GridJobPayload>(`${qPrefix}grid-jobs`, { connection });
 
 export async function closeQueues() {
   try {
