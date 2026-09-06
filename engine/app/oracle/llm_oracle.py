@@ -1,3 +1,5 @@
+import os
+
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import JsonOutputParser
@@ -6,6 +8,30 @@ from pydantic import BaseModel, Field
 class WeatherForecastParser(BaseModel):
     stress_index: float = Field(description="Exogenous stress index from 0 to 1")
     reasoning: str = Field(description="Reasoning for the calculated stress index")
+
+def _build_llm() -> ChatOpenAI:
+    """Build a ChatOpenAI instance for the oracle from environment variables.
+
+    Variable priority:
+        LLM_ORACLE_MODEL  – model dedicated to the oracle (e.g. z-ai/glm-5.3-free)
+        LLM_MODEL         – shared fallback used by negotiation agents
+        gpt-4o-mini       – hard default when neither is set
+    Also reads:
+        LLM_API_KEY / OPENAI_API_KEY – credentials
+        LLM_BASE_URL                 – OpenAI-compatible endpoint
+    """
+    api_key  = os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    base_url = os.environ.get("LLM_BASE_URL")
+    model    = (
+        os.environ.get("LLM_ORACLE_MODEL")
+        or os.environ.get("LLM_MODEL")
+        or "gpt-4o-mini"
+    )
+
+    kwargs: dict = dict(temperature=0, model=model, api_key=api_key)
+    if base_url:
+        kwargs["base_url"] = base_url
+    return ChatOpenAI(**kwargs)
 
 def fetch_weather_and_predict_stress(temperature: float, cloud_cover: float) -> dict:
     """
@@ -26,10 +52,8 @@ def fetch_weather_and_predict_stress(temperature: float, cloud_cover: float) -> 
     )
     
     try:
-        # We use a mocked LLM for testing without API keys, but the chain is production-ready
-        llm = ChatOpenAI(temperature=0, model="gpt-4-turbo-preview")
+        llm = _build_llm()
         chain = prompt | llm | JsonOutputParser(pydantic_object=WeatherForecastParser)
-        
         result = chain.invoke({"context": context})
         return result
     except Exception as e:

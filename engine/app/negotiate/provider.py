@@ -39,11 +39,24 @@ class MockLLMProvider(NegotiationLLMProvider):
 class LangChainLLMProvider(NegotiationLLMProvider):
     """A production LLM provider using LangChain's Chat models."""
     
-    def __init__(self, model_name: str = "gpt-4o-mini", temperature: float = 0.0, api_key: str | None = None):
+    def __init__(
+        self,
+        model_name: str = "gpt-4o-mini",
+        temperature: float = 0.0,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ):
         # We lazily import langchain to avoid slow startup if not used
         try:
             from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(model=model_name, temperature=temperature, api_key=api_key)
+            kwargs: dict[str, Any] = dict(
+                model=model_name,
+                temperature=temperature,
+                api_key=api_key,
+            )
+            if base_url:
+                kwargs["base_url"] = base_url
+            self.llm = ChatOpenAI(**kwargs)
         except ImportError:
             raise ProviderError("langchain-openai is not installed.")
         except Exception as e:
@@ -65,7 +78,12 @@ class LangChainLLMProvider(NegotiationLLMProvider):
 def get_provider(api_key: str | None = None) -> NegotiationLLMProvider:
     """Factory to get the appropriate LLM provider based on configuration."""
     mode = os.environ.get("GRIDNEXUS_MODE", "simulation").lower()
-    
+
+    # Resolve credentials / endpoint from environment
+    resolved_key = api_key or os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    base_url = os.environ.get("LLM_BASE_URL")          # e.g. https://api.tokenrouter.com/v1
+    model_name = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+
     if mode == "production":
         # In production, we MUST have a configured provider if LLM is enabled
         llm_enabled = os.environ.get("GRIDNEXUS_LLM_ENABLED", "true").lower() == "true"
@@ -74,17 +92,17 @@ def get_provider(api_key: str | None = None) -> NegotiationLLMProvider:
         
         provider_type = os.environ.get("LLM_PROVIDER", "openai").lower()
         if provider_type == "openai":
-            if not api_key and not os.environ.get("OPENAI_API_KEY"):
-                raise RuntimeError("OPENAI_API_KEY is required for LangChainLLMProvider in production.")
-            return LangChainLLMProvider(api_key=api_key)
+            if not resolved_key:
+                raise RuntimeError("LLM_API_KEY (or OPENAI_API_KEY) is required for LangChainLLMProvider in production.")
+            return LangChainLLMProvider(model_name=model_name, api_key=resolved_key, base_url=base_url)
         else:
             raise RuntimeError(f"Unsupported LLM_PROVIDER in production: {provider_type}")
             
     else:
-        # For simulation/test, fallback to Mock if no keys are provided
-        if api_key or os.environ.get("OPENAI_API_KEY"):
+        # For simulation/test, fall back to Mock if no key is provided
+        if resolved_key:
             try:
-                return LangChainLLMProvider(api_key=api_key)
+                return LangChainLLMProvider(model_name=model_name, api_key=resolved_key, base_url=base_url)
             except ProviderError:
                 pass
         return MockLLMProvider()
