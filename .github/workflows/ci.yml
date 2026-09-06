@@ -383,8 +383,140 @@ jobs:
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
         run: npx vitest run tests/integration/golden-path.test.ts --reporter=verbose
 
+  # ---------------------------------------------------------------------------
+  # Phase 12: DER-Owner End-to-End Golden Path Regression Test
+  # Validates the 26-step DER-owner registration, onboarding, approval,
+  # provisioning, autonomous negotiation, and scoped settlement flow.
+  # ---------------------------------------------------------------------------
+  der-owner-golden-path:
+    name: "DER-Owner Golden Path E2E"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: broker-tests
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gridnexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./broker
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+        run: npx prisma generate
+
+      - name: Apply DB migrations
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+        run: npx prisma migrate deploy
+
+      - name: Run DER-owner golden path test
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+          REDIS_URL: redis://127.0.0.1:6379
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          GRIDNEXUS_MODE: simulation
+        run: npx vitest run tests/golden-path.test.ts --reporter=verbose
+
+  # ---------------------------------------------------------------------------
+  # Phase 6.2 & Phase 14: Tenant Isolation & Authorization Security Audit
+  # ---------------------------------------------------------------------------
+  tenant-isolation-security:
+    name: "Tenant Isolation & Security Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: broker-tests
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gridnexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./broker
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+        run: npx prisma generate
+
+      - name: Apply DB migrations
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+        run: npx prisma migrate deploy
+
+      - name: Run security audit and tenant-isolation suites
+        working-directory: ./broker
+        env:
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+          REDIS_URL: redis://127.0.0.1:6379
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          GRIDNEXUS_MODE: simulation
+        run: npx vitest run tests/tenant-security.test.ts tests/authorization-and-sensitive-data-audit.test.ts --reporter=verbose
+
 # ---------------------------------------------------------------------------
-# Merge Gate — all 6 CI jobs must pass before any PR can be merged.
+# Merge Gate — all required CI jobs must pass before any PR can be merged.
 # Configure branch protection on `main` to require ONLY this job.
 # ---------------------------------------------------------------------------
   all-checks-pass:
@@ -399,6 +531,8 @@ jobs:
       - smoke-test
       - integration-tests
       - golden-path-test
+      - der-owner-golden-path
+      - tenant-isolation-security
     steps:
       - name: Check all jobs succeeded
         run: |
@@ -409,4 +543,4 @@ jobs:
             echo "One or more required jobs did not succeed."
             exit 1
           fi
-          echo "All 7 CI jobs passed — safe to merge."
+          echo "All required CI jobs passed — safe to merge."
