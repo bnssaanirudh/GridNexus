@@ -208,6 +208,93 @@ meRouter.get("/agent", async (req: Request, res: Response): Promise<void> => {
 });
 
 /**
+ * GET /api/me/dashboard
+ * Aggregated dashboard view for the authenticated DER owner.
+ * Returns safe metadata (microgrids, DERs, primary agent, preferences).
+ * STRICT SECURITY: Never returns agent JWT or private operational secrets.
+ */
+meRouter.get("/dashboard", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const microgridIds = await getAuthorizedMicrogridIds(userId);
+
+    if (microgridIds.length === 0) {
+      res.status(404).json({
+        error: "NOT_FOUND",
+        message: "No microgrids provisioned for authenticated user.",
+      });
+      return;
+    }
+
+    const [microgrids, ders, agents] = await Promise.all([
+      prisma.microgrid.findMany({
+        where: { id: { in: microgridIds } },
+        select: {
+          id: true,
+          externalCode: true,
+          name: true,
+          type: true,
+          latitude: true,
+          longitude: true,
+          active: true,
+          createdAt: true,
+        },
+      }),
+      prisma.dER.findMany({
+        where: { microgridId: { in: microgridIds } },
+        select: {
+          id: true,
+          microgridId: true,
+          type: true,
+          ratedPowerKw: true,
+          energyCapacityKwh: true,
+        },
+      }),
+      prisma.agent.findMany({
+        where: { microgridId: { in: microgridIds } },
+        select: {
+          id: true,
+          microgridId: true,
+          type: true,
+          qre_lambda: true,
+        },
+      }),
+    ]);
+
+    const primaryMicrogrid = microgrids[0];
+    const preferences = primaryMicrogrid ? await getPreferences(primaryMicrogrid.id) : null;
+    const primaryAgent = agents[0] ? {
+      id: agents[0].id,
+      microgridId: agents[0].microgridId,
+      type: agents[0].type,
+      qre_lambda: agents[0].qre_lambda != null ? number(agents[0].qre_lambda) : null,
+    } : null;
+
+    res.json({
+      microgrids: microgrids.map((mg) => ({
+        ...mg,
+        latitude: mg.latitude ? number(mg.latitude) : null,
+        longitude: mg.longitude ? number(mg.longitude) : null,
+      })),
+      ders: ders.map((d) => ({
+        ...d,
+        ratedPowerKw: number(d.ratedPowerKw),
+        energyCapacityKwh: d.energyCapacityKwh != null ? number(d.energyCapacityKwh) : null,
+      })),
+      agents: agents.map((a) => ({
+        ...a,
+        qre_lambda: a.qre_lambda != null ? number(a.qre_lambda) : null,
+      })),
+      agent: primaryAgent,
+      preferences,
+    });
+  } catch (error) {
+    console.error("[Me] Failed to get dashboard summary:", error);
+    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  }
+});
+
+/**
  * GET /api/me/negotiations
  * Returns negotiations where the user's microgrid was seller or buyer.
  */

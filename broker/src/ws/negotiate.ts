@@ -152,32 +152,41 @@ export function setupNegotiationNamespace(io: Server) {
   // socket.data.agentId instead of trusting client-sent agentId fields.
   // In the test environment (NODE_ENV=test) the check is bypassed.
   nsp.use((socket, next) => {
+    const token = (socket.handshake.auth?.token as string | undefined) ||
+                  (socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, ""));
+
+    if (token) {
+      try {
+        try {
+          socket.data.agentId = verifyAgentJWT(token);
+          socket.data.observer = false;
+          return next();
+        } catch {
+          const viewer = verifySocketToken(token);
+          socket.data.agentId = viewer.userId;
+          socket.data.observer = true;
+          socket.data.viewerRole = viewer.role;
+          return next();
+        }
+      } catch (err) {
+        // In test mode, fall through to legacy test-agent bypass when JWT
+        // verification fails (e.g. tests using auth: { token: "test-token" }).
+        if (process.env.NODE_ENV === "test") {
+          socket.data.agentId = (socket.handshake.query.agentId as string) ?? "test-agent";
+          socket.data.observer = false;
+          return next();
+        }
+        return next(new Error(`AUTH_FAILED: ${(err as Error).message}`));
+      }
+    }
+
     if (process.env.NODE_ENV === "test") {
       socket.data.agentId = (socket.handshake.query.agentId as string) ?? "test-agent";
       socket.data.observer = false;
       return next();
     }
 
-    const token = socket.handshake.auth?.token as string | undefined;
-    if (!token) {
-      return next(new Error("AUTH_REQUIRED: missing JWT in socket.handshake.auth.token"));
-    }
-
-    try {
-      try {
-        socket.data.agentId = verifyAgentJWT(token);
-        socket.data.observer = false;
-        next();
-      } catch {
-        const viewer = verifySocketToken(token);
-        socket.data.agentId = viewer.userId;
-        socket.data.observer = true;
-        socket.data.viewerRole = viewer.role;
-        next();
-      }
-    } catch (err) {
-      next(new Error(`AUTH_FAILED: ${(err as Error).message}`));
-    }
+    return next(new Error("AUTH_REQUIRED: missing JWT in socket.handshake.auth.token"));
   });
 
   nsp.on("connection", (socket: Socket) => {
@@ -283,6 +292,43 @@ export function setupNegotiationNamespace(io: Server) {
           } catch (error) {
             if (failClosed) throw error;
             console.warn("[WS] Preference check unavailable in simulation/test mode.");
+          }
+        }
+
+        // Check if any participant's microgrid or owner is suspended
+        for (const participant of participants) {
+          try {
+            const mg = await prisma.microgrid.findUnique({
+              where: { id: participant.microgridId },
+              select: { active: true },
+            });
+            if (mg && !mg.active) {
+              socket.emit("protocol_error", {
+                code: "OWNER_SUSPENDED",
+                message: `Microgrid ${participant.microgridId} for participant ${participant.id} is inactive.`,
+              });
+              return;
+            }
+
+            const suspendedOnboarding = await prisma.userOnboarding.findFirst({
+              where: {
+                OR: [
+                  { agentId: participant.id },
+                  { microgridId: participant.microgridId },
+                ],
+                status: "SUSPENDED",
+              },
+            });
+            if (suspendedOnboarding) {
+              socket.emit("protocol_error", {
+                code: "OWNER_SUSPENDED",
+                message: `Participant ${participant.id} owner onboarding is suspended.`,
+              });
+              return;
+            }
+          } catch (error) {
+            if (failClosed) throw error;
+            console.warn("[WS] Suspension check unavailable in simulation/test mode.");
           }
         }
 
