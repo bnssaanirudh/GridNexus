@@ -82,6 +82,7 @@ function getNavSections(role?: string) {
     {
       label: "Governance",
       items: [
+        { path: "/dashboard/admin-onboarding", icon: "🛡", label: "DER Onboarding" },
         { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
         { path: "/dashboard/experiments", icon: "⊗", label: "Experiments" },
         { path: "/dashboard/health", icon: "◌", label: "System Health" },

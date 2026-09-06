@@ -41,6 +41,7 @@ const AuditPage           = lazy(() => import("./pages/AuditPage"));
 const ExperimentsPage     = lazy(() => import("./pages/ExperimentsPage"));
 const SystemHealthPage    = lazy(() => import("./pages/SystemHealthPage"));
 const WorkflowPage        = lazy(() => import("./pages/WorkflowPage"));
+const AdminOnboardingPage = lazy(() => import("./pages/AdminOnboardingPage"));
 
 function DashboardIndex() {
   const { user } = useAuth();
@@ -164,6 +165,9 @@ export default function App() {
             } />
             <Route path="health" element={
               <Suspense fallback={<PageLoader />}><SystemHealthPage /></Suspense>
+            } />
+            <Route path="admin-onboarding" element={
+              <Suspense fallback={<PageLoader />}><AdminOnboardingPage /></Suspense>
             } />
           </Route>
 
