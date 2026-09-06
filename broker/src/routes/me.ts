@@ -6,7 +6,7 @@
  * UserMicrogridMembership records. Client-supplied IDs are never trusted.
  */
 
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../db/prisma.js";
 
@@ -14,6 +14,34 @@ export const meRouter = Router();
 
 // All /api/me routes require authentication
 meRouter.use(requireAuth());
+
+// Verify user account is active (inactive/suspended users lose access immediately)
+meRouter.use(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ error: "UNAUTHORIZED", message: "User not identified." });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { active: true },
+    });
+
+    if (!user || !user.active) {
+      res.status(403).json({
+        error: "ACCOUNT_INACTIVE",
+        message: "User account is inactive or suspended.",
+      });
+      return;
+    }
+    next();
+  } catch (err) {
+    console.error("[Me] User active check failed:", err);
+    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  }
+});
 
 /**
  * Derives the list of authorized microgrid IDs for the authenticated user.
