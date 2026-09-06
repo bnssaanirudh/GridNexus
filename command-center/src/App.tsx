@@ -42,6 +42,7 @@ const ExperimentsPage     = lazy(() => import("./pages/ExperimentsPage"));
 const SystemHealthPage    = lazy(() => import("./pages/SystemHealthPage"));
 const WorkflowPage        = lazy(() => import("./pages/WorkflowPage"));
 const AdminOnboardingPage = lazy(() => import("./pages/AdminOnboardingPage"));
+const AdminOraclePage     = lazy(() => import("./pages/AdminOraclePage"));
 
 function DashboardIndex() {
   const { user } = useAuth();
@@ -168,6 +169,9 @@ export default function App() {
             } />
             <Route path="admin-onboarding" element={
               <Suspense fallback={<PageLoader />}><AdminOnboardingPage /></Suspense>
+            } />
+            <Route path="admin-oracle" element={
+              <Suspense fallback={<PageLoader />}><AdminOraclePage /></Suspense>
             } />
           </Route>
 

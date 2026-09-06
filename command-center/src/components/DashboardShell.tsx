@@ -53,6 +53,7 @@ function getNavSections(role?: string) {
         items: [
           { path: "/dashboard/settlements", icon: "▣", label: "Settlements" },
           { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
+          { path: "/dashboard/admin-oracle", icon: "⚛", label: "Oracle Sources" },
         ],
       },
     ];
@@ -83,6 +84,7 @@ function getNavSections(role?: string) {
       label: "Governance",
       items: [
         { path: "/dashboard/admin-onboarding", icon: "🛡", label: "DER Onboarding" },
+        { path: "/dashboard/admin-oracle", icon: "⚛", label: "Oracle Sources" },
         { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
         { path: "/dashboard/experiments", icon: "⊗", label: "Experiments" },
         { path: "/dashboard/health", icon: "◌", label: "System Health" },

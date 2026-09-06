@@ -5,6 +5,7 @@ import { isProduction } from "../config.js";
 import { prisma } from "../db/prisma.js";
 import { onboardingRouter } from "./onboarding.js";
 import { adminOnboardingRouter } from "./adminOnboarding.js";
+import { adminOracleRouter } from "./adminOracle.js";
 import { meRouter } from "./me.js";
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
@@ -31,6 +32,7 @@ apiRouter.use(operationalAccess);
 
 apiRouter.use("/onboarding", onboardingRouter);
 apiRouter.use("/admin/onboarding", adminOnboardingRouter);
+apiRouter.use("/admin/oracle", adminOracleRouter);
 apiRouter.use("/me", meRouter);
 
 apiRouter.get("/oracle/signals", asyncRoute(async (req, res) => {

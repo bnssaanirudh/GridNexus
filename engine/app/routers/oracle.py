@@ -96,3 +96,81 @@ async def compute_signal(request: OracleSignalRequest) -> OracleSignalResponse:
         action_probs=probs,
         confidence=confidence,
     )
+
+
+from datetime import datetime
+from typing import Any, Optional
+from pydantic import BaseModel, Field
+
+
+class OracleDocumentIngestRequest(BaseModel):
+    content: str
+    source_type: str = "oracle"
+    source_name: Optional[str] = None
+    source_uri: Optional[str] = None
+    publisher: Optional[str] = None
+    observed_at: Optional[datetime] = None
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    trust_score: Optional[float] = Field(default=1.0, ge=0.0, le=1.0)
+    connector_version: Optional[str] = "manual-admin-v1"
+    metadata: Optional[dict[str, Any]] = None
+
+
+class OracleDocumentIngestResponse(BaseModel):
+    id: str
+    content_hash: str
+    status: str
+
+
+@router.post("/documents", response_model=OracleDocumentIngestResponse)
+async def ingest_document(req: OracleDocumentIngestRequest) -> OracleDocumentIngestResponse:
+    """Manually ingest an approved Oracle document into embedded_documents."""
+    from app.rag.connectors import RawDocument
+    from app.rag.rag_pipeline import ingest_documents
+
+    cleaned_content = req.content.strip()
+    if not cleaned_content:
+        raise HTTPException(status_code=400, detail="Content cannot be empty")
+
+    doc = RawDocument(
+        content=cleaned_content,
+        source_type=req.source_type,
+        source_name=req.source_name,
+        source_uri=req.source_uri,
+        publisher=req.publisher,
+        observed_at=req.observed_at,
+        valid_from=req.valid_from,
+        valid_until=req.valid_until,
+        trust_score=req.trust_score,
+        connector_version=req.connector_version,
+        metadata=req.metadata,
+    )
+    doc.compute_hash()
+
+    try:
+        await ingest_documents([doc])
+    except Exception as exc:
+        logger.exception("Document ingestion failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {exc}") from exc
+
+    return OracleDocumentIngestResponse(
+        id=doc.id,
+        content_hash=doc.content_hash or "",
+        status="ingested",
+    )
+
+
+@router.get("/signals/relevant")
+async def get_relevant_signals(query: str, k: int = 3) -> list[dict[str, Any]]:
+    """Retrieve top-k relevant signals for a query using cosine similarity."""
+    from app.rag.rag_pipeline import relevant_signals
+
+    if not query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+    try:
+        return await relevant_signals(query=query, k=k)
+    except Exception as exc:
+        logger.exception("Retrieval failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Retrieval failed: {exc}") from exc
+
