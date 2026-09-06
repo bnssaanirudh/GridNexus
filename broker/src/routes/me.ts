@@ -11,6 +11,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../db/prisma.js";
 import { getPreferences, upsertPreferences, validatePreferenceInput } from "../services/preferenceService.js";
 import { appendAuditEvent } from "../services/auditChain.js";
+import { getExplanationsForOwner, buildNegotiationExplanations } from "../services/explainabilityService.js";
 
 export const meRouter = Router();
 
@@ -599,4 +600,68 @@ async function handleUpdatePreferences(req: Request, res: Response): Promise<voi
 
 meRouter.put("/preferences", handleUpdatePreferences);
 meRouter.patch("/preferences", handleUpdatePreferences);
+
+/**
+ * GET /api/me/explanations
+ * Returns structured decision explanations for negotiations involving the user's microgrids.
+ * Guarantees:
+ * - No raw LLM chain-of-thought
+ * - No private opponent strategy leakage
+ * - Traceable evidence IDs
+ */
+meRouter.get("/explanations", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const microgridIds = await getAuthorizedMicrogridIds(userId);
+
+    if (microgridIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const { limit, skip } = parsePagination(req);
+    const negotiationId = typeof req.query.negotiationId === "string" ? req.query.negotiationId : undefined;
+
+    if (negotiationId) {
+      const explanations = await buildNegotiationExplanations(negotiationId, microgridIds, prisma);
+      res.json(explanations);
+      return;
+    }
+
+    const explanations = await getExplanationsForOwner(userId, microgridIds, limit, skip, prisma);
+    res.json(explanations);
+  } catch (error) {
+    console.error("[Me] Failed to get explanations:", error);
+    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  }
+});
+
+/**
+ * GET /api/me/negotiations/:id/explanation
+ * Returns structured decision explanations for a specific negotiation session.
+ */
+meRouter.get("/negotiations/:id/explanation", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const microgridIds = await getAuthorizedMicrogridIds(userId);
+    const negotiationId = req.params.id;
+
+    if (microgridIds.length === 0) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Negotiation not found or unauthorized." });
+      return;
+    }
+
+    const explanations = await buildNegotiationExplanations(negotiationId, microgridIds, prisma);
+    if (explanations.length === 0) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Negotiation not found or unauthorized." });
+      return;
+    }
+
+    res.json(explanations);
+  } catch (error) {
+    console.error("[Me] Failed to get negotiation explanation:", error);
+    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  }
+});
+
 

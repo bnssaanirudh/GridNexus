@@ -20,6 +20,7 @@ import {
   getMyAnalytics,
   getMyPreferences,
   updateMyPreferences,
+  getMyExplanations,
   type MyMicrogrid,
   type MyDER,
   type MyAgent,
@@ -27,6 +28,7 @@ import {
   type MySettlement,
   type MyAnalytics,
   type MyPreferences,
+  type DecisionExplanation,
 } from "../lib/meApi";
 
 export default function MyAgentPage(): React.ReactElement {
@@ -41,6 +43,7 @@ export default function MyAgentPage(): React.ReactElement {
   const [settlements, setSettlements] = useState<MySettlement[]>([]);
   const [analytics, setAnalytics] = useState<MyAnalytics | null>(null);
   const [preferences, setPreferences] = useState<MyPreferences | null>(null);
+  const [explanations, setExplanations] = useState<DecisionExplanation[]>([]);
 
   // Preference edit modal state
   const [isEditingPrefs, setIsEditingPrefs] = useState(false);
@@ -54,7 +57,7 @@ export default function MyAgentPage(): React.ReactElement {
       setLoading(true);
       setError(null);
 
-      const [mgs, derList, ag, negs, settles, stats, prefs] = await Promise.all([
+      const [mgs, derList, ag, negs, settles, stats, prefs, expls] = await Promise.all([
         getMyMicrogrids().catch(() => []),
         getMyDERs().catch(() => []),
         getMyAgent().catch(() => null),
@@ -62,6 +65,7 @@ export default function MyAgentPage(): React.ReactElement {
         getMySettlements(10).catch(() => []),
         getMyAnalytics().catch(() => null),
         getMyPreferences().catch(() => null),
+        getMyExplanations(10).catch(() => []),
       ]);
 
       setMicrogrids(mgs);
@@ -71,6 +75,7 @@ export default function MyAgentPage(): React.ReactElement {
       setSettlements(settles);
       setAnalytics(stats);
       setPreferences(prefs);
+      setExplanations(expls);
       if (prefs) setPrefForm(prefs);
     } catch (err) {
       console.error("[MyAgent] Failed to load owner data:", err);
@@ -675,13 +680,200 @@ export default function MyAgentPage(): React.ReactElement {
 
       {/* ── 15. Agent Decision Explanation Panel ─────────────────────────── */}
       <section className="card" style={{ padding: "var(--space-5)" }} aria-label="Agent Explainability">
-        <h2 style={{ fontSize: "16px", fontWeight: 600, margin: "0 0 var(--space-2) 0" }}>
-          🤖 Agent Decision Explanation & Audit Logic
-        </h2>
-        <p style={{ fontSize: "13px", color: "var(--fg-muted)", margin: "0 0 var(--space-4) 0" }}>
-          Structured rationale for recent autonomous agent actions without exposing raw chain-of-thought.
-        </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+          <div>
+            <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0 }}>
+              🤖 Agent Decision Explanation & Audit Logic
+            </h2>
+            <p style={{ fontSize: "13px", color: "var(--fg-muted)", margin: "var(--space-1) 0 0 0" }}>
+              Structured rationale for recent autonomous agent actions without exposing raw chain-of-thought or competitor secrets.
+            </p>
+          </div>
+          <span className="badge badge-primary" style={{ fontSize: "11px" }}>
+            AUTONOMOUS AUDIT
+          </span>
+        </div>
 
+        {/* Dynamic Explanations List */}
+        {explanations.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
+            {explanations.map((exp) => (
+              <div
+                key={exp.id}
+                style={{
+                  padding: "var(--space-4)",
+                  border: "1px solid var(--border-light)",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--bg-secondary)",
+                }}
+                data-testid="explanation-card"
+              >
+                {/* Header: Action, Decision Source & Timestamp */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+                  <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                    <span
+                      className={`badge ${
+                        exp.decision === "ACCEPT"
+                          ? "badge-success"
+                          : exp.decision === "WALK_AWAY"
+                          ? "badge-danger"
+                          : "badge-primary"
+                      }`}
+                      style={{ fontWeight: 700, fontSize: "12px" }}
+                    >
+                      {exp.decision}
+                    </span>
+                    <span className="badge badge-neutral" style={{ fontSize: "11px" }}>
+                      Round {exp.roundNumber}
+                    </span>
+                    <span
+                      className="badge badge-neutral"
+                      style={{
+                        fontSize: "11px",
+                        background: exp.decisionSource === "FALLBACK_DQN" ? "rgba(220, 100, 50, 0.15)" : undefined,
+                        color: exp.decisionSource === "FALLBACK_DQN" ? "var(--accent-warning)" : undefined,
+                      }}
+                    >
+                      {exp.decisionSource}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: "12px", color: "var(--fg-muted)" }}>
+                    {new Date(exp.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+
+                {/* Key Metrics Grid */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                    gap: "var(--space-3)",
+                    padding: "var(--space-3)",
+                    background: "var(--bg-white)",
+                    borderRadius: "var(--radius-sm)",
+                    marginBottom: "var(--space-3)",
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--fg-muted)" }}>Offered Price</span>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--fg-primary)" }}>
+                      ${exp.offeredPrice.toFixed(4)}/kWh
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--fg-muted)" }}>Energy Volume</span>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--fg-primary)" }}>
+                      {exp.energyKwh.toFixed(1)} kWh
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--fg-muted)" }}>Confidence</span>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--accent-success)" }}>
+                      {(exp.confidence * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--fg-muted)" }}>Owner Constraints</span>
+                    <div>
+                      <span
+                        className={`badge ${exp.ownerConstraintsSatisfied ? "badge-success" : "badge-danger"}`}
+                        style={{ fontSize: "10px", marginTop: "2px" }}
+                      >
+                        {exp.ownerConstraintsSatisfied ? "Satisfied" : "Violated"}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--fg-muted)" }}>Grid & Stability</span>
+                    <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
+                      <span
+                        className={`badge ${exp.stabilityStatus === "STABLE" ? "badge-success" : "badge-warning"}`}
+                        style={{ fontSize: "10px" }}
+                      >
+                        {exp.stabilityStatus}
+                      </span>
+                      <span
+                        className={`badge ${exp.gridStatus === "FEASIBLE" ? "badge-success" : "badge-warning"}`}
+                        style={{ fontSize: "10px" }}
+                      >
+                        {exp.gridStatus}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Decision Factors */}
+                <div style={{ marginBottom: "var(--space-3)" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--fg-primary)", marginBottom: "var(--space-1)" }}>
+                    Primary Driving Factors:
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {exp.topFactors.map((factor, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          fontSize: "12px",
+                          color: "var(--fg-muted)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "var(--space-2)",
+                        }}
+                      >
+                        <span style={{ color: "var(--accent-primary)", fontSize: "14px" }}>•</span>
+                        <span>{factor}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Traceable Evidence IDs */}
+                <details style={{ fontSize: "11px", color: "var(--fg-muted)", cursor: "pointer" }}>
+                  <summary style={{ fontWeight: 500, userSelect: "none" }}>
+                    Traceable Persisted Evidence & Audit IDs
+                  </summary>
+                  <div
+                    style={{
+                      marginTop: "var(--space-2)",
+                      padding: "var(--space-2) var(--space-3)",
+                      background: "rgba(0,0,0,0.03)",
+                      borderRadius: "var(--radius-sm)",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "var(--space-2)",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    <div>Negotiation ID: {exp.negotiationId}</div>
+                    {exp.evidenceIds.roundId && <div>Round ID: {exp.evidenceIds.roundId}</div>}
+                    {exp.evidenceIds.stabilityCheckId && <div>Stability ID: {exp.evidenceIds.stabilityCheckId}</div>}
+                    {exp.evidenceIds.gridCertificateId && <div>Grid Cert ID: {exp.evidenceIds.gridCertificateId}</div>}
+                    {exp.oracleSignalIds.length > 0 && (
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        Oracle Signal IDs: {exp.oracleSignalIds.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                </details>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "var(--space-4)",
+              background: "var(--bg-secondary)",
+              borderRadius: "var(--radius-sm)",
+              textAlign: "center",
+              color: "var(--fg-muted)",
+              marginBottom: "var(--space-5)",
+              fontSize: "13px",
+            }}
+          >
+            No autonomous decisions recorded yet. Once your agent engages in peer-to-peer negotiations, verified decision explanations and factor breakdowns will appear here.
+          </div>
+        )}
+
+        {/* Foundational Governance Principles */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "var(--space-4)" }}>
           <div style={{ padding: "var(--space-4)", background: "var(--bg-secondary)", borderRadius: "var(--radius-sm)" }}>
             <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "var(--space-2)" }}>

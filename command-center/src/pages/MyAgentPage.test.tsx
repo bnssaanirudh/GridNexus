@@ -130,6 +130,36 @@ describe("MyAgentPage — Personal DER-Owner Dashboard", () => {
     },
   ];
 
+  const mockExplanations: meApi.DecisionExplanation[] = [
+    {
+      id: "exp-neg-100-r2",
+      negotiationId: "neg-100",
+      roundNumber: 2,
+      decision: "ACCEPT",
+      offeredPrice: 0.145,
+      energyKwh: 50.0,
+      confidence: 0.945,
+      decisionSource: "LLM_AGENT",
+      topFactors: [
+        "Owner minimum price constraint ($12.0000/kWh) satisfied",
+        "Battery reserve headroom preserved (65.0% SoC)",
+        "Expected solar output active (45.0 kW rated)",
+        "Coalition stability verified (margin: 8.50)",
+      ],
+      ownerConstraintsSatisfied: true,
+      stabilityStatus: "STABLE",
+      gridStatus: "FEASIBLE",
+      oracleSignalIds: ["sig-oracle-1"],
+      evidenceIds: {
+        roundId: "rnd-100-2",
+        stabilityCheckId: "sc-100",
+        gridCertificateId: "cert-100",
+        settlementId: "settle-uuid-1",
+      },
+      timestamp: new Date().toISOString(),
+    },
+  ];
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(meApi, "getMyMicrogrids").mockResolvedValue(mockMicrogrids);
@@ -139,6 +169,7 @@ describe("MyAgentPage — Personal DER-Owner Dashboard", () => {
     vi.spyOn(meApi, "getMyPreferences").mockResolvedValue(mockPreferences);
     vi.spyOn(meApi, "getMySettlements").mockResolvedValue(mockSettlements);
     vi.spyOn(meApi, "getMyNegotiations").mockResolvedValue(mockNegotiations);
+    vi.spyOn(meApi, "getMyExplanations").mockResolvedValue(mockExplanations);
     vi.spyOn(meApi, "updateMyPreferences").mockImplementation(async (updates) => ({
       ...mockPreferences,
       ...updates,
@@ -283,4 +314,32 @@ describe("MyAgentPage — Personal DER-Owner Dashboard", () => {
       );
     });
   });
+
+  it("11. displays structured autonomous agent decision explanation card with driving factors", async () => {
+    render(<MyAgentPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("explanation-card")).toBeInTheDocument();
+      expect(screen.getByText("$0.1450/kWh")).toBeInTheDocument();
+      expect(screen.getByText("94.5%")).toBeInTheDocument();
+      expect(screen.getByText(/Battery reserve headroom preserved/i)).toBeInTheDocument();
+      expect(screen.getByText(/Coalition stability verified/i)).toBeInTheDocument();
+      expect(screen.getByText(/Traceable Persisted Evidence/i)).toBeInTheDocument();
+    });
+  });
+
+  it("12. PRIVACY GUARANTEE: ensures NO raw LLM chain-of-thought or competitor secrets are displayed", async () => {
+    const { container } = render(<MyAgentPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /My Energy Agent/i })).toBeInTheDocument();
+    });
+
+    const textContent = container.textContent || "";
+    expect(textContent).not.toContain("rawLlmOutput");
+    expect(textContent).not.toContain("SECRET_CHAIN_OF_THOUGHT");
+    expect(textContent).not.toContain("hiddenGenCost");
+    expect(textContent).not.toContain("hiddenBattery");
+  });
 });
+

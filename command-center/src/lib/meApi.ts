@@ -164,3 +164,55 @@ export async function getMyPreferences(microgridId?: string): Promise<MyPreferen
 export async function updateMyPreferences(updates: Partial<MyPreferences>): Promise<MyPreferences> {
   return apiPut<MyPreferences>(BROKER_URL, "/api/me/preferences", updates);
 }
+
+export interface ExplanationFactor {
+  category: string;
+  factor: string;
+  impact: "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "CONSTRAINT";
+  metricValue?: string | number;
+}
+
+export interface DecisionExplanation {
+  id: string;
+  negotiationId: string;
+  roundNumber: number;
+  decision: string;
+  offeredPrice: number;
+  energyKwh: number;
+  confidence: number;
+  decisionSource: string;
+  topFactors: string[];
+  detailedFactors?: ExplanationFactor[];
+  ownerConstraintsSatisfied: boolean;
+  stabilityStatus: "STABLE" | "UNSTABLE" | "NOT_EVALUATED";
+  gridStatus: "FEASIBLE" | "VIOLATION_DETECTED" | "NOT_EVALUATED";
+  oracleSignalIds: string[];
+  evidenceIds: {
+    roundId?: string;
+    beliefUpdateId?: string;
+    stabilityCheckId?: string;
+    gridCertificateId?: string;
+    reasoningDeficitId?: string;
+    settlementId?: string;
+  };
+  timestamp: string;
+}
+
+export async function getMyExplanations(
+  limit = 10,
+  skip = 0,
+  negotiationId?: string
+): Promise<DecisionExplanation[]> {
+  const q = negotiationId ? `&negotiationId=${encodeURIComponent(negotiationId)}` : "";
+  return apiGet<DecisionExplanation[]>(BROKER_URL, `/api/me/explanations?limit=${limit}&skip=${skip}${q}`);
+}
+
+export async function getMyNegotiationExplanation(
+  negotiationId: string
+): Promise<DecisionExplanation[]> {
+  return apiGet<DecisionExplanation[]>(
+    BROKER_URL,
+    `/api/me/negotiations/${encodeURIComponent(negotiationId)}/explanation`
+  );
+}
+
