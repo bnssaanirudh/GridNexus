@@ -130,18 +130,6 @@ vi.mock("@prisma/client", () => {
         );
         return row;
       }),
-      update: vi.fn().mockImplementation(async (args: any) => {
-        const row = dbState.beliefUpdates.find((b) => b.id === args.where.id);
-        if (row) {
-          if (args.data.status) row.status = args.data.status;
-          if (args.data.afterBelief !== undefined)
-            row.afterBelief = Number(args.data.afterBelief);
-          eventTrace.push(
-            `DB:beliefUpdate.update(id=${row.id},status=${row.status})`
-          );
-        }
-        return row;
-      }),
     };
     this.stabilityCheck = {
       create: vi.fn().mockResolvedValue({ id: "sc-mock", isStable: true, margin: 8.0 }),
@@ -213,7 +201,7 @@ describe("Oracle Broadcast Pipeline ", () => {
 
   // ── E2E: Pipeline stage ordering ──────────────────────────────────────────
 
-  it("Stage ordering: Oracle → Signal persist → BeliefUpdate PENDING → BeliefUpdate COMPLETE", async () => {
+  it("Stage ordering: Oracle → Signal persist → BeliefUpdate COMPLETE", async () => {
     const signalId = "sig-manual-1";
     const signalData = JSON.stringify({ signal: "BUY", confidence: 0.82 });
 
@@ -223,25 +211,12 @@ describe("Oracle Broadcast Pipeline ", () => {
     expect(result.agentsUpdated).toBe(2);
     expect(result.signalId).toBe(signalId);
 
-    // Assert PENDING was created before COMPLETE for each agent
-    const pendingEvents = eventTrace.filter((e) =>
-      e.includes("beliefUpdate.create") && e.includes("status=PENDING")
-    );
+    // Assert COMPLETE was created for each agent
     const completeEvents = eventTrace.filter((e) =>
-      e.includes("beliefUpdate.update") && e.includes("status=COMPLETE")
+      e.includes("beliefUpdate.create") && e.includes("status=COMPLETE")
     );
 
-    expect(pendingEvents.length).toBe(2); // one per agent
-    expect(completeEvents.length).toBe(2);
-
-    // Every PENDING create must appear before its corresponding COMPLETE update
-    const pendingIdx = eventTrace.findIndex((e) =>
-      e.includes("beliefUpdate.create") && e.includes("status=PENDING")
-    );
-    const completeIdx = eventTrace.findIndex((e) =>
-      e.includes("beliefUpdate.update") && e.includes("status=COMPLETE")
-    );
-    expect(pendingIdx).toBeLessThan(completeIdx);
+    expect(completeEvents.length).toBe(2); // one per agent
   });
 
   it("runBeliefUpdateCycle uses prior 0.5 for agent with no prior updates", async () => {
@@ -264,12 +239,10 @@ describe("Oracle Broadcast Pipeline ", () => {
 
     const oracleIdx = eventTrace.indexOf("ENGINE:POST /oracle/signal");
     const persistIdx = eventTrace.findIndex((e) => e.includes("oracleSignal.create"));
-    const beliefPendingIdx = eventTrace.findIndex((e) => e.includes("beliefUpdate.create"));
-    const beliefCompleteIdx = eventTrace.findIndex((e) => e.includes("beliefUpdate.update"));
+    const beliefCompleteIdx = eventTrace.findIndex((e) => e.includes("beliefUpdate.create"));
 
     // Oracle fires first, signal persisted second, beliefs written after
     expect(oracleIdx).toBeLessThan(persistIdx);
-    expect(persistIdx).toBeLessThan(beliefPendingIdx);
-    expect(beliefPendingIdx).toBeLessThan(beliefCompleteIdx);
+    expect(persistIdx).toBeLessThan(beliefCompleteIdx);
   });
 });

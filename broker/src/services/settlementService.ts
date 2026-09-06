@@ -89,7 +89,7 @@ export async function commitSettlement(input: SettlementInput): Promise<Settleme
       data: { status: "PROVISIONALLY_ACCEPTED" },
     });
 
-    // ── 3. Create Settlement (PROVISIONAL) ──────────────────────────────
+    // ── 3. Create Settlement (COMMITTED directly due to append-only) ────
     const settlement = await tx.settlement.create({
       data: {
         idempotencyKey: input.idempotencyKey,
@@ -101,7 +101,7 @@ export async function commitSettlement(input: SettlementInput): Promise<Settleme
         currency: input.currency ?? "USD",
         deliveryStart: input.deliveryStart,
         deliveryEnd: input.deliveryEnd,
-        status: "PROVISIONAL",
+        status: "COMMITTED",
         stabilityCheckId: input.stabilityCheckId,
         gridCertificateId: input.gridCertificateId,
       },
@@ -173,11 +173,7 @@ export async function commitSettlement(input: SettlementInput): Promise<Settleme
       });
     }
 
-    // ── 8. Commit settlement + negotiation ───────────────────────────────
-    await tx.settlement.update({
-      where: { id: settlement.id },
-      data: { status: "COMMITTED" },
-    });
+    // ── 8. Commit negotiation ───────────────────────────────
     await tx.negotiation.update({
       where: { id: input.negotiationId },
       data: { status: "COMMITTED" },

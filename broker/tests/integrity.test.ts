@@ -61,13 +61,13 @@ describe("Audit Trail Hardening ", () => {
       await prisma.$executeRawUnsafe(`DELETE FROM "beliefupdates"`);
       await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
       await prisma.$executeRawUnsafe(`RESET ROLE`);
-      await prisma.integritySnapshot.deleteMany({});
-      await prisma.reconciliation.deleteMany({});
-      await prisma.agent.deleteMany({});
-      await prisma.negotiation.deleteMany({});
-      await prisma.stabilityCheck.deleteMany({});
-      await prisma.dER.deleteMany({});
-      await prisma.microgrid.deleteMany({});
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "integrity_snapshots" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "reconciliations" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "agents" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "negotiations" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "stabilitychecks" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "ders" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "microgrids" CASCADE`);
     } catch (e) {
       console.warn("Database unavailable. These tests require a live Postgres instance with triggers installed.");
     }

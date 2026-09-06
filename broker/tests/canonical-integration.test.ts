@@ -56,9 +56,9 @@ describe("Canonical Identity Pipeline Integration", () => {
 
   afterAll(async () => {
     // Cleanup
-    await prisma.agent.deleteMany({ where: { id: { in: [agentId1, agentId2] } } });
-    await prisma.dER.deleteMany({ where: { microgridId: { in: [microgridId1, microgridId2] } } });
-    await prisma.microgrid.deleteMany({ where: { id: { in: [microgridId1, microgridId2] } } });
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "agents" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "ders" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "microgrids" CASCADE`);
     await prisma.$disconnect();
   });
 

@@ -97,11 +97,11 @@ describe("Full Trade-Loop Integration", () => {
       await prisma.$executeRawUnsafe(`DELETE FROM "energytransfers"`);
       await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
       await prisma.$executeRawUnsafe(`DELETE FROM "beliefupdates"`);
-      await prisma.negotiation.deleteMany({});
-      await prisma.stabilityCheck.deleteMany({});
-      await prisma.agent.deleteMany({});
-      await prisma.dER.deleteMany({});
-      await prisma.microgrid.deleteMany({});
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "negotiations" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "stabilitychecks" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "agents" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "ders" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "microgrids" CASCADE`);
     } catch (_) { /* ignore */ }
     await prisma.$disconnect();
   });
@@ -110,13 +110,13 @@ describe("Full Trade-Loop Integration", () => {
     vi.restoreAllMocks();
     clientSocket.removeAllListeners();
     // Purge rows created during the test (FK order matters)
-    await prisma.settlement.deleteMany({});
-    await prisma.energyTransfer.deleteMany({});
-    await prisma.rlReward.deleteMany({});
-    await prisma.beliefUpdate.deleteMany({});
-    await prisma.negotiationRound.deleteMany({});
-    await prisma.negotiation.deleteMany({});
-    await prisma.stabilityCheck.deleteMany({});
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "settlements" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "energytransfers" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "rlrewards" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "beliefupdates" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "negotiation_rounds" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "negotiations" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "stabilitychecks" CASCADE`);
 
     // Re-wire the StabilityGate mock implementation after vi.restoreAllMocks clears it.
     // Creates a real StabilityCheck row so FK-chain assertions (stabilityCheck.isStable) still pass.

@@ -19,11 +19,17 @@ import { authRouter } from "./routes/auth.js";
 import { apiRouter } from "./routes/api.js";
 import { healthRouter } from "./routes/health.js";
 import { disconnectPrisma } from "./db/prisma.js";
-import { isProduction } from "./config.js";
-
+import { isProduction, isSimulation } from "./config.js";
 
 const app = express();
 const PORT = parseInt(process.env.BROKER_PORT ?? "3000", 10);
+
+if (isSimulation()) {
+  console.log("=========================================================");
+  console.log("[Broker] Running in SIMULATION mode.");
+  console.log("[Broker] Production constraints (strict IAM, wallets) are BYPASSED for command-center demo.");
+  console.log("=========================================================");
+}
 
 // ---------------------------------------------------------------------------
 // CORS — controlled via CORS_ORIGINS env var (comma-separated).

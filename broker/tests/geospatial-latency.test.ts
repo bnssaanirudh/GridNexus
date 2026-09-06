@@ -114,12 +114,8 @@ describe("Geospatial & Analytics Reflection Latency ", () => {
 
     // Clean up created test transfer if DB was active
     try {
-      await prisma.energyTransfer.deleteMany({
-        where: { stabilitycheckid: stabilityCheckId },
-      });
-      await prisma.stabilityCheck.deleteMany({
-        where: { id: stabilityCheckId },
-      });
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "energytransfers" CASCADE`);
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "stabilitychecks" CASCADE`);
       await prisma.$disconnect();
     } catch {
       // Ignore if offline

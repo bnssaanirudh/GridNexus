@@ -164,31 +164,25 @@ export async function runBeliefUpdateCycle(
       });
       const prior = lastUpdate ? Number(lastUpdate.afterBelief) : 0.5;
 
-      // ── Step 2: Create PENDING row ──────────────────────────────────────────
+      // ── Step 2: Compute posterior ───────────────────────────────────────────
+      const posterior = computeBayesianPosterior(prior, confidence);
+
+      // ── Step 3: Create COMPLETE row ─────────────────────────────────────────
       row = await prisma.beliefUpdate.create({
         data: {
           negotiationId: negId,
           triggeringsignalid: signalId,
           beforeBelief: prior,
-          afterBelief: prior, // placeholder until computation completes
+          afterBelief: posterior,
           prior,
           likelihood: confidence,
-          posterior: prior,
+          posterior: posterior,
           confidence,
           hypothesis,
           decisionSource: "ORACLE",
           agentId: agent.id,
-          status: "PENDING",
+          status: "COMPLETE",
         },
-      });
-
-      // ── Step 3: Compute posterior ───────────────────────────────────────────
-      const posterior = computeBayesianPosterior(prior, confidence);
-
-      // ── Step 4: Mark COMPLETE ───────────────────────────────────────────────
-      await prisma.beliefUpdate.update({
-        where: { id: row.id },
-        data: { afterBelief: posterior, posterior, status: "COMPLETE" },
       });
 
       results.push({

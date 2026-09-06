@@ -59,19 +59,19 @@ describe("WebSocket Negotiation Integration", () => {
       clientSocket.on("connect", () => resolve());
     });
     // Clean DB for clean tests (FK order: energytransfers before microgrids)
-    await prisma.settlement.deleteMany({});
-    await prisma.energyTransfer.deleteMany({});
-    await prisma.beliefUpdate.deleteMany({});
-    await prisma.rlReward.deleteMany({});
-    await prisma.beliefUpdate.deleteMany({});
-    await prisma.negotiationRound.deleteMany({});
-    await prisma.negotiation.deleteMany({});
-    await prisma.agent.deleteMany({});
-    await prisma.stabilityCheck.deleteMany({});
-    await prisma.gridFeasibilityCertificate.deleteMany({});
-    await prisma.dER.deleteMany({});
-    await prisma.microgridBusMapping.deleteMany({});
-    await prisma.microgrid.deleteMany({});
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "settlements" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "energytransfers" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "beliefupdates" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "rlrewards" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "beliefupdates" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "negotiation_rounds" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "negotiations" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "agents" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "stabilitychecks" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "grid_feasibility_certificates" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "ders" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "microgrid_bus_mappings" CASCADE`);
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "microgrids" CASCADE`);
 
     mockGridGateCheck.mockImplementation(async () => {
       const cert = await prisma.gridFeasibilityCertificate.create({
