@@ -149,6 +149,9 @@ services:
     build:
       context: .
       dockerfile: command-center/Dockerfile
+      args:
+        VITE_GRIDNEXUS_MODE: simulation
+        VITE_DEMO_MODE: "true"
     container_name: gridnexus-command-center
     restart: unless-stopped
     ports:

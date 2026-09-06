@@ -253,15 +253,13 @@ apiRouter.get("/metrics/overview", asyncRoute(async (_req, res) => {
 }));
 
 apiRouter.post("/demo/live-trade", asyncRoute(async (req, res) => {
-  const { apiKey } = req.body;
-  if (!apiKey || typeof apiKey !== "string") {
-    res.status(400).json({ error: "Missing or invalid apiKey" });
+  if (isProduction()) {
+    res.status(403).json({ error: "DEMO_DISABLED", message: "Synthetic trades are disabled in production." });
     return;
   }
-  
   // Start the background process without blocking the response
   import("../services/demoTradeCoordinator.js")
-    .then((module) => module.startLiveDemoTrade(apiKey))
+    .then((module) => module.startLiveDemoTrade())
     .catch((err) => console.error("Failed to start live demo trade:", err));
 
   res.json({ message: "Live demo trade initiated. Check the Negotiation Feed." });

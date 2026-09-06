@@ -486,6 +486,7 @@ export function setupNegotiationNamespace(io: Server) {
 
       const sellerTypes = new Set(["SELLER", "PRODUCER", "GENERATOR"]);
       const buyerTypes = new Set(["BUYER", "CONSUMER", "LOAD"]);
+      const failClosed = isProduction() || process.env.NODE_ENV === "production";
 
       try {
         const activeParticipant = negState.participants.find((p) => p.id === negState.activeAgent);
@@ -599,7 +600,6 @@ export function setupNegotiationNamespace(io: Server) {
       const currentSurplus =
         negState.initialSurplus * Math.pow(DISCOUNT_FACTOR, negState.round - 1);
       const decisionSource = "LLM_AGENT";
-      const failClosed = isProduction() || process.env.NODE_ENV === "production";
 
       try {
         await prisma.negotiationRound.create({

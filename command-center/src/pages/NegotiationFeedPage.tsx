@@ -90,7 +90,7 @@ export default function NegotiationFeedPage() {
           <div className="page-subtitle">Live negotiation pipeline events via WebSocket</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
-          <div className={`conn-badge conn-badge--${connState}`}>
+          <div className={`conn-badge conn-badge--${connState}`} role="status" aria-live="polite" aria-label="WebSocket status">
             <span className="conn-dot" />
             {connState === "connected" ? "WS Connected" : connState === "connecting" ? "Connecting…" : "Disconnected"}
           </div>
@@ -98,10 +98,8 @@ export default function NegotiationFeedPage() {
             className="btn btn-primary" 
             style={{ fontSize: "12px", padding: "4px 8px" }}
             onClick={async () => {
-              const apiKey = window.prompt("Enter your OpenAI API Key for the Live LLM Demo:");
-              if (!apiKey) return;
               try {
-                await apiPost(BROKER_URL, "/api/demo/live-trade", { apiKey });
+                await apiPost(BROKER_URL, "/api/demo/live-trade", {});
                 alert("Live Demo Trade started! Watch the feed for updates.");
               } catch (e) {
                 alert("Error starting demo: " + (e as Error).message);

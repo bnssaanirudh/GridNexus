@@ -17,6 +17,7 @@ import { Role } from "../middleware/rbac.js";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../db/prisma.js";
 import { appendAuditEvent } from "../services/auditChain.js";
+import { isProduction } from "../config.js";
 
 const ENGINE_URL = process.env.ENGINE_URL || "http://127.0.0.1:8000";
 const MAX_CONTENT_LENGTH = 10_000;
@@ -232,7 +233,7 @@ adminOracleRouter.post(
 
       // 6. Compute cryptographic SHA-256 hash
       const contentHash = crypto.createHash("sha256").update(cleanedContent, "utf8").digest("hex");
-      const docId = crypto.randomUUID();
+      let docId = crypto.randomUUID() as string;
       const connectorVersion = "manual-admin-v1";
       const embeddingModel = "all-MiniLM-L6-v2";
       const embeddingModelVersion = "1.1.0";
@@ -243,6 +244,7 @@ adminOracleRouter.post(
       try {
         const engineRes = await fetch(`${ENGINE_URL}/oracle/documents`, {
           method: "POST",
+          signal: AbortSignal.timeout(5000),
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content: cleanedContent,
@@ -259,6 +261,9 @@ adminOracleRouter.post(
           }),
         });
         if (engineRes.ok) {
+          const result = await engineRes.json() as { id?: string };
+          if (!result.id) throw new Error("Engine did not return an ingested document ID");
+          docId = result.id;
           engineIngested = true;
         }
       } catch (_err) {
@@ -266,6 +271,10 @@ adminOracleRouter.post(
       }
 
       if (!engineIngested) {
+        if (isProduction()) {
+          res.status(503).json({ error: "ENGINE_UNAVAILABLE", message: "Document embedding failed; source was not approved. Retry when the engine is available." });
+          return;
+        }
         // Direct SQL insertion with pgvector 384-d zero vector fallback
         const zeroVector = `[${new Array(384).fill(0).join(",")}]`;
         await prisma.$executeRaw`

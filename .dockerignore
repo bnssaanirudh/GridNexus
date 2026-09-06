@@ -52,3 +52,8 @@ opsd-household_data-2020-04-15/
 india_spectral_tmy.h5
 *.mp4
 for ui/
+
+# Keep assets referenced by the shipped UI in its build context.
+!command-center/public/**/*.png
+!command-center/public/**/*.svg
+!command-center/public/**/*.mp4

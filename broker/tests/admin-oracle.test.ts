@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import request from "supertest";
 import { app } from "../src/index.js";
 import { prisma, disconnectPrisma } from "../src/db/prisma.js";
@@ -20,6 +20,8 @@ describe("Admin Oracle Source Management APIs", () => {
   const testSourceIds: string[] = [];
 
   beforeAll(async () => {
+    // Keep ingestion in the isolated test DB; never call the running engine.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
     process.env.JWT_SECRET = "supersecret_test_jwt_key_must_be_at_least_32_chars_long_123456";
     process.env.ENCRYPTION_KEY = "1234567890123456789012345678901234567890123456789012345678901234";
 
@@ -120,6 +122,7 @@ describe("Admin Oracle Source Management APIs", () => {
       await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     }
     await disconnectPrisma();
+    vi.unstubAllGlobals();
   });
 
   describe("GET /api/admin/oracle/sources - Read RBAC", () => {

@@ -127,6 +127,10 @@ services:
         max-file: "5"
 
   command-center:
+    build:
+      args:
+        VITE_GRIDNEXUS_MODE: production
+        VITE_DEMO_MODE: "false"
     restart: always
     deploy:
       resources:

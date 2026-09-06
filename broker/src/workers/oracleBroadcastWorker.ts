@@ -42,6 +42,10 @@ interface AnonymizedGridState {
   participating_microgrid_count: number;
   aggregate_demand_signal: number;
   exogenous_stress_index: number;
+  average_market_price: number;
+  round_fraction: number;
+  stability_margin: number;
+  peer_cooperation_rate: number;
 }
 
 /**
@@ -57,6 +61,10 @@ async function buildGridState(): Promise<AnonymizedGridState> {
       participating_microgrid_count: microgridCount,
       aggregate_demand_signal: agentCount > 0 ? 0.6 : 0.5,
       exogenous_stress_index: 0.5, // ASSUMPTION: neutral until weather API wired
+      average_market_price: 0,
+      round_fraction: 0,
+      stability_margin: 0,
+      peer_cooperation_rate: 0,
     };
   } catch {
     return {
@@ -64,6 +72,10 @@ async function buildGridState(): Promise<AnonymizedGridState> {
       participating_microgrid_count: 1,
       aggregate_demand_signal: 0.5,
       exogenous_stress_index: 0.5,
+      average_market_price: 0,
+      round_fraction: 0,
+      stability_margin: 0,
+      peer_cooperation_rate: 0,
     };
   }
 }
@@ -88,6 +100,7 @@ async function fetchOracleSignal(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ state }),
+      signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) throw new Error(`Engine returned ${res.status}`);
     return (await res.json()) as OracleSignalResponse;

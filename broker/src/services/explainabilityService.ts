@@ -101,13 +101,13 @@ export async function buildNegotiationExplanations(
   }
 
   // Tenant authorization: user must own seller or buyer microgrid
-  const isSeller = userMicrogridIds.includes(negotiation.sellerMicrogridId);
-  const isBuyer = userMicrogridIds.includes(negotiation.buyerMicrogridId);
+  const isSeller = negotiation.sellerMicrogridId != null && userMicrogridIds.includes(negotiation.sellerMicrogridId);
+  const isBuyer = negotiation.buyerMicrogridId != null && userMicrogridIds.includes(negotiation.buyerMicrogridId);
   if (!isSeller && !isBuyer) {
     return [];
   }
 
-  const userMgId = isSeller ? negotiation.sellerMicrogridId : negotiation.buyerMicrogridId;
+  const userMgId = (isSeller ? negotiation.sellerMicrogridId : negotiation.buyerMicrogridId) as string;
 
   // 2. Fetch user microgrid preferences & DERs
   const prefs = await getPreferences(userMgId, dbClient);

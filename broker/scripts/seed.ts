@@ -81,7 +81,7 @@ async function main() {
         agents: {
           create: [{ 
             id: `agent_${i}`,
-            type: "Qwen-LLM", 
+            type: isSolar ? "SELLER" : "BUYER", 
             qre_lambda: 0.5 
           }],
         },

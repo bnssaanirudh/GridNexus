@@ -731,7 +731,7 @@ meRouter.get("/negotiations/:id/explanation", async (req: Request, res: Response
   try {
     const userId = req.user!.userId;
     const microgridIds = await getAuthorizedMicrogridIds(userId);
-    const negotiationId = req.params.id;
+    const negotiationId = req.params.id as string;
 
     if (microgridIds.length === 0) {
       res.status(404).json({ error: "NOT_FOUND", message: "Negotiation not found or unauthorized." });

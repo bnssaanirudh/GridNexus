@@ -10,7 +10,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 # ── Configuration ────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "gridnexus-dev-secret-change-in-production-please")
@@ -26,18 +25,26 @@ if os.getenv("GRIDNEXUS_MODE", "simulation").lower() == "production":
     if SECRET_KEY == AGENT_SECRET_KEY:
         raise RuntimeError("User and agent JWT signing keys must be different in production.")
 
-# ── Password hashing ─────────────────────────────────────────────────────────
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
+# ── Password hashing ─────────────────────────────────────────────────────────
 
 def hash_password(plain_password: str) -> str:
     """Hash a plain-text password using bcrypt."""
-    return pwd_context.hash(plain_password)
+    # Ensure password is <= 72 bytes to prevent bcrypt 4.0 ValueError
+    password_bytes = plain_password.encode('utf-8')[:72]
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain-text password against a bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode('utf-8')[:72]
+    hashed_bytes = hashed_password.encode('utf-8')
+    try:
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+    except ValueError:
+        return False
 
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────

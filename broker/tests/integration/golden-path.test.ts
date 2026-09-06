@@ -56,6 +56,7 @@ vi.mock("../../src/services/gridGate.js", () => ({
 }));
 
 const prisma = new PrismaClient();
+let completedNegotiationId: string;
 
 // ────────────────────────────────────────────────────────────────────────────
 // Shared fixtures
@@ -108,7 +109,7 @@ async function assertFkChain(signalId: string): Promise<void> {
 
   // ── Step 3: Negotiation (ACCEPTED bargaining session) must exist ────────
   const negotiation = await prisma.negotiation.findFirst({
-    where: { status: "COMMITTED" },
+    where: { id: completedNegotiationId, status: "COMMITTED" },
     include: {
       beliefUpdates: true,
       rlRewards: true,
@@ -300,6 +301,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
       clientSocket.on("negotiation_complete", (data: any) => {
         clearTimeout(timeout);
         expect(data.status).toBe("COMMITTED");
+        completedNegotiationId = data.negotiationId;
         resolve();
       });
     });

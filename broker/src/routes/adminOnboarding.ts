@@ -87,8 +87,9 @@ adminOnboardingRouter.get(
   requireAuth([Role.ADMIN, Role.GRID_OPERATOR, Role.AUDITOR]),
   async (req: Request, res: Response): Promise<void> => {
     try {
+      const id = req.params.id as string;
       const record = await prisma.userOnboarding.findUnique({
-        where: { id: req.params.id },
+        where: { id },
         include: {
           user: {
             select: { id: true, email: true, username: true, role: true },
@@ -172,8 +173,9 @@ adminOnboardingRouter.post(
         return;
       }
 
+      const id = req.params.id as string;
       const record = await prisma.userOnboarding.findUnique({
-        where: { id: req.params.id },
+        where: { id },
       });
 
       if (!record) {
@@ -265,8 +267,9 @@ adminOnboardingRouter.post(
         return;
       }
 
+      const id = req.params.id as string;
       const record = await prisma.userOnboarding.findUnique({
-        where: { id: req.params.id },
+        where: { id },
       });
 
       if (!record) {
@@ -358,8 +361,9 @@ adminOnboardingRouter.post(
         return;
       }
 
+      const id = req.params.id as string;
       const record = await prisma.userOnboarding.findUnique({
-        where: { id: req.params.id },
+        where: { id },
       });
 
       if (!record) {
@@ -454,7 +458,7 @@ adminOnboardingRouter.post(
       const { busId, phase, agentType } = req.body || {};
 
       const result = await provisionOnboarding({
-        onboardingId: req.params.id,
+        onboardingId: req.params.id as string,
         actorId,
         busId,
         phase,

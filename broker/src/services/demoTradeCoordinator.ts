@@ -14,7 +14,7 @@ function createAgentToken(agentId: string): string {
   });
 }
 
-export async function startLiveDemoTrade(apiKey: string): Promise<void> {
+export async function startLiveDemoTrade(): Promise<void> {
   const port = process.env.PORT || 3000;
   const wsUrl = `http://localhost:${port}/negotiate`;
 
@@ -59,8 +59,7 @@ export async function startLiveDemoTrade(apiKey: string): Promise<void> {
           current_offer_price: data.offerPrice ?? null,
           current_requested_kwh: data.requestedKwh ?? null,
           round_number: data.round,
-          surplus: data.surplus,
-          api_key: apiKey
+          surplus: data.surplus
         })
       });
 

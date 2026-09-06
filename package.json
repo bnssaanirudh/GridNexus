@@ -8,6 +8,9 @@
     "command-center"
   ],
   "type": "module",
+  "overrides": {
+    "qs": "^6.16.0"
+  },
   "scripts": {
     "test": "npm run test --workspaces",
     "lint": "npm run lint --workspaces",

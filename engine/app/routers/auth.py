@@ -47,6 +47,8 @@ class UserOut(BaseModel):
     username: str
     email:    str
     role:     str
+    
+    model_config = {"from_attributes": True}
 
 class AgentTokenResponse(BaseModel):
     access_token: str
