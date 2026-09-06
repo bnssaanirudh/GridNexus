@@ -1,7 +1,7 @@
-/** command-center/src/pages/SettlementsPage.tsx */
 import { useState, useEffect } from "react";
 import { apiGet, BROKER_URL } from "../lib/apiClient";
 import { normalizeSettlements, type SettlementDto as Settlement } from "../lib/apiContracts";
+import { useAuth } from "../lib/auth";
 
 const STATUS_CLASS: Record<string, string> = { COMMITTED: "badge--committed", PROVISIONAL: "badge--provisional", VERIFYING: "badge--info", COMMITTING: "badge--info", FAILED: "badge--failed" };
 
@@ -9,6 +9,10 @@ const shortId = (value?: string) => value ? value.slice(0, 8) + "…" : "—";
 const formatNumber = (value: number | undefined, digits: number) => value == null ? "—" : value.toFixed(digits);
 const formatDate = (value?: string) => value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleString() : "—";
 export default function SettlementsPage() {
+  const { user } = useAuth();
+  const isDerOwner = user?.role?.toUpperCase() === "DER_OWNER";
+  const endpoint = isDerOwner ? "/api/me/settlements?limit=50" : "/api/settlements?limit=50";
+
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +21,7 @@ export default function SettlementsPage() {
     const controller = new AbortController();
     const load = async (initial = false) => {
       try {
-        const payload = await apiGet<unknown>(BROKER_URL, "/api/settlements?limit=50", { signal: controller.signal });
+        const payload = await apiGet<unknown>(BROKER_URL, endpoint, { signal: controller.signal });
         setSettlements(normalizeSettlements(payload));
         setError(null);
       } catch (error) {
@@ -29,7 +33,7 @@ export default function SettlementsPage() {
     void load(true);
     const id = window.setInterval(() => void load(), 15000);
     return () => { controller.abort(); window.clearInterval(id); };
-  }, []);
+  }, [endpoint]);
 
   const totalKwh = settlements.filter(s => s.status === "COMMITTED").reduce((acc, s) => acc + (s.energyKwh ?? 0), 0);
 
@@ -37,8 +41,12 @@ export default function SettlementsPage() {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 className="page-title">Settlements</h1>
-          <div className="page-subtitle">Idempotent energy trade settlements with audit linkage</div>
+          <h1 className="page-title">{isDerOwner ? "My Settlements" : "Settlements"}</h1>
+          <div className="page-subtitle">
+            {isDerOwner
+              ? "Energy settlements committed for your microgrid"
+              : "Idempotent energy trade settlements with audit linkage"}
+          </div>
         </div>
         {!loading && settlements.length > 0 && (
           <div className="metric-card" style={{ background: "var(--bg-card)", border: "1px solid var(--border-dim)", borderRadius: "var(--radius-md)", padding: "var(--space-4)" }}>

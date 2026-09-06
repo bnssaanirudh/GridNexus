@@ -167,6 +167,15 @@ export default function App() {
             <Route path="health" element={
               <Suspense fallback={<PageLoader />}><SystemHealthPage /></Suspense>
             } />
+            <Route path="trades" element={
+              <Suspense fallback={<PageLoader />}><NegotiationFeedPage /></Suspense>
+            } />
+            <Route path="preferences" element={
+              <Suspense fallback={<PageLoader />}><MyAgentPage /></Suspense>
+            } />
+            <Route path="topology" element={
+              <Suspense fallback={<PageLoader />}><GridPage /></Suspense>
+            } />
             <Route path="admin-onboarding" element={
               <Suspense fallback={<PageLoader />}><AdminOnboardingPage /></Suspense>
             } />

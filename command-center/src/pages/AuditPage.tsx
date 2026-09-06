@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { computeEventHash } from "../lib/auditVerifier";
 import { apiGet, BROKER_URL } from "../lib/apiClient";
 import { normalizeAuditEvents } from "../lib/apiContracts";
+import { useAuth } from "../lib/auth";
 
 interface AuditEvent {
   id: string;
@@ -41,6 +42,10 @@ function VerifyBadge({ status }: { status: VerifyStatus }) {
 }
 
 export default function AuditPage() {
+  const { user } = useAuth();
+  const isDerOwner = user?.role?.toUpperCase() === "DER_OWNER";
+  const endpoint = isDerOwner ? "/api/me/audit?limit=50" : "/api/audit-events?limit=50";
+
   const [events, setEvents] = useState<EventWithVerify[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +54,7 @@ export default function AuditPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const payload = await apiGet<unknown>(BROKER_URL, "/api/audit-events?limit=50");
+        const payload = await apiGet<unknown>(BROKER_URL, endpoint);
         setEvents(normalizeAuditEvents(payload).map(e => ({ ...e, _verifyStatus: "unknown" })));
       } catch (err) {
         setError(`Could not load audit events: ${err instanceof Error ? err.message : String(err)}`);
@@ -58,7 +63,7 @@ export default function AuditPage() {
       }
     };
     load();
-  }, []);
+  }, [endpoint]);
 
   const runVerification = async () => {
     setVerifying(true);
@@ -92,8 +97,12 @@ export default function AuditPage() {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 className="page-title">Audit Chain</h1>
-          <div className="page-subtitle">SHA-256 cryptographic event chain — append-only, deletion-protected</div>
+          <h1 className="page-title">{isDerOwner ? "My Audit Ledger" : "Audit / Integrity Chain"}</h1>
+          <div className="page-subtitle">
+            {isDerOwner
+              ? "SHA-256 cryptographic audit trail scoped to your account and microgrid transactions"
+              : "SHA-256 cryptographic event chain — append-only, deletion-protected"}
+          </div>
         </div>
         <button
           className="btn btn-primary btn-sm"

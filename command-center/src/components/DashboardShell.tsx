@@ -15,23 +15,14 @@ function getNavSections(role?: string) {
   if (normalized === "DER_OWNER") {
     return [
       {
-        label: "Autonomous Agent",
+        label: "DER Owner Operations",
         items: [
-          { path: "/dashboard/my-agent", icon: "⚡", label: "My Energy Agent", end: true },
-        ],
-      },
-      {
-        label: "Assets & Settlement",
-        items: [
-          { path: "/dashboard/ders", icon: "⬡", label: "My DER Assets" },
+          { path: "/dashboard/my-agent", icon: "⚡", label: "My Agent", end: true },
+          { path: "/dashboard/ders", icon: "⬡", label: "My DER" },
+          { path: "/dashboard/trades", icon: "⇄", label: "My Trades" },
           { path: "/dashboard/settlements", icon: "▣", label: "My Settlements" },
-        ],
-      },
-      {
-        label: "Transparency & Audit",
-        items: [
-          { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
-          { path: "/dashboard/audit", icon: "⌁", label: "Audit Ledger" },
+          { path: "/dashboard/preferences", icon: "⚙", label: "My Preferences" },
+          { path: "/dashboard/audit", icon: "⌁", label: "My Audit" },
         ],
       },
     ];
@@ -40,20 +31,14 @@ function getNavSections(role?: string) {
   if (normalized === "VIEWER" || normalized === "AUDITOR") {
     return [
       {
-        label: "Monitoring",
+        label: "Governance & Audit (Read-Only)",
         items: [
           { path: "/dashboard", icon: "◈", label: "Overview", end: true },
           { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
-          { path: "/dashboard/grid", icon: "⟁", label: "Grid Topology" },
-          { path: "/dashboard/oracle", icon: "◉", label: "Oracle" },
-        ],
-      },
-      {
-        label: "Settlement & Audit",
-        items: [
           { path: "/dashboard/settlements", icon: "▣", label: "Settlements" },
-          { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
+          { path: "/dashboard/oracle", icon: "◉", label: "Oracle" },
           { path: "/dashboard/admin-oracle", icon: "⚛", label: "Oracle Sources" },
+          { path: "/dashboard/audit", icon: "⌁", label: "Audit / Integrity" },
         ],
       },
     ];
@@ -62,30 +47,25 @@ function getNavSections(role?: string) {
   // ADMIN / GRID_OPERATOR
   return [
     {
-      label: "Monitoring",
+      label: "Grid Operations",
       items: [
         { path: "/dashboard", icon: "◈", label: "Overview", end: true },
-        { path: "/dashboard/my-agent", icon: "⚡", label: "My Energy Agent" },
-        { path: "/dashboard/workflow", icon: "⎈", label: "System Workflow" },
+        { path: "/dashboard/grid", icon: "⟁", label: "Microgrids" },
+        { path: "/dashboard/ders", icon: "⬡", label: "DER Assets" },
+        { path: "/dashboard/topology", icon: "☊", label: "Network Topology" },
+        { path: "/dashboard/workflow", icon: "⎈", label: "Agents / System Workflow" },
         { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
         { path: "/dashboard/coalitions", icon: "◎", label: "Coalitions" },
-        { path: "/dashboard/grid", icon: "⟁", label: "Grid Topology" },
+        { path: "/dashboard/settlements", icon: "▣", label: "Settlements" },
         { path: "/dashboard/oracle", icon: "◉", label: "Oracle" },
       ],
     },
     {
-      label: "Assets & Settlement",
+      label: "Governance & Administration",
       items: [
-        { path: "/dashboard/ders", icon: "⬡", label: "DER Assets" },
-        { path: "/dashboard/settlements", icon: "▣", label: "Settlements" },
-      ],
-    },
-    {
-      label: "Governance",
-      items: [
-        { path: "/dashboard/admin-onboarding", icon: "🛡", label: "DER Onboarding" },
+        { path: "/dashboard/admin-onboarding", icon: "🛡", label: "Owner Approvals" },
         { path: "/dashboard/admin-oracle", icon: "⚛", label: "Oracle Sources" },
-        { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
+        { path: "/dashboard/audit", icon: "⌁", label: "Audit / Integrity" },
         { path: "/dashboard/experiments", icon: "⊗", label: "Experiments" },
         { path: "/dashboard/health", icon: "◌", label: "System Health" },
       ],
@@ -167,10 +147,15 @@ export default function DashboardShell() {
 
         {/* User profile */}
         {user ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-            <div className="topbar-user" title={user.username}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            <div className="topbar-user" title={`${user.username} (${user.role ?? "User"})`}>
               <div className="topbar-avatar" aria-hidden="true">{initials}</div>
-              <span className="topbar-username">{user.username}</span>
+              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+                <span className="topbar-username">{user.username}</span>
+                <span style={{ fontSize: "10px", color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
+                  {user.role ?? "USER"}
+                </span>
+              </div>
             </div>
             <button
               className="btn btn-ghost btn-sm"

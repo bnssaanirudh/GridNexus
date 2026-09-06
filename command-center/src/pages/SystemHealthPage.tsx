@@ -51,27 +51,66 @@ export default function SystemHealthPage() {
     return () => clearInterval(id);
   }, []);
 
+  const runtimeMode = import.meta.env?.VITE_GRIDNEXUS_MODE ?? "simulation";
+  const isSimulation = runtimeMode === "simulation";
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 className="page-title">System Health</h1>
-          <div className="page-subtitle">Service readiness probes and connectivity checks</div>
+          <h1 className="page-title">System Health & Diagnostics</h1>
+          <div className="page-subtitle">Service readiness probes and connectivity checks — runtime environment diagnostics and data classification</div>
         </div>
         <button className="btn btn-outline btn-sm" onClick={runChecks}>Refresh</button>
+      </div>
+
+      {/* Runtime Environment Diagnostics */}
+      <div className="card" style={{ marginBottom: "var(--space-6)" }}>
+        <div className="card-header">
+          <span className="card-title">Environment Diagnostics</span>
+          <span className={`badge ${isSimulation ? "badge--synthetic" : "badge--live"}`}>
+            {isSimulation ? "SIMULATION MODE" : "PRODUCTION MODE"}
+          </span>
+        </div>
+        <div className="card-body">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "var(--space-4)" }}>
+            <div>
+              <div className="metric-label">Runtime Mode</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "16px", fontWeight: 600, color: "var(--fg-primary)", marginTop: "4px" }}>
+                {runtimeMode.toUpperCase()}
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--fg-muted)", marginTop: "4px" }}>
+                {isSimulation
+                  ? "Relaxed IAM & hardware checks for demonstration and integration tests."
+                  : "Strict IAM, HSM wallet signatures, and live physical constraints enforced."}
+              </div>
+            </div>
+            <div>
+              <div className="metric-label">Operational Data Classification</div>
+              <div style={{ fontSize: "12px", color: "var(--fg-secondary)", marginTop: "4px", lineHeight: 1.5 }}>
+                <span className="badge badge--live" style={{ marginRight: "6px" }}>REAL / OPERATIONAL</span>
+                Cryptographic audit hash chains, Postgres relational ledger, RBAC tokens.
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--fg-secondary)", marginTop: "6px", lineHeight: 1.5 }}>
+                <span className="badge badge--synthetic" style={{ marginRight: "6px" }}>SIMULATION</span>
+                DER physical asset power curves, synthetic solar/wind generation profiles.
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
         {states.map(svc => (
           <div key={svc.name} className="card card--pinned">
             <div className="card-header">
-              <span className="card-title">{svc.name}</span>
+              <span className="card-title">{svc.name} Service Probe</span>
               <StatusIcon status={svc.status} />
             </div>
             <div className="card-body">
               <div style={{ display: "flex", gap: "var(--space-4)" }}>
                 <div>
-                  <div className="metric-label">Latency</div>
+                  <div className="metric-label">Readiness Latency</div>
                   <div className="metric-value" style={{ fontSize: "20px" }}>
                     {svc.latencyMs != null
                       ? <>{svc.latencyMs}<span className="metric-unit">ms</span></>

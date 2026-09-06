@@ -1,26 +1,38 @@
-/** command-center/src/pages/DERAssetsPage.tsx */
 import { useState, useEffect } from "react";
 import { apiGet, BROKER_URL } from "../lib/apiClient";
 import { normalizeDers, type DerDto as DER } from "../lib/apiContracts";
+import { useAuth } from "../lib/auth";
 
 const DER_TYPE_ICON: Record<string, string> = { SOLAR: "☀", WIND: "💨", BATTERY: "🔋", EV: "🚗", FLEXIBLE_LOAD: "⚡", OTHER: "◈" };
 
 export default function DERAssetsPage() {
+  const { user } = useAuth();
+  const isDerOwner = user?.role?.toUpperCase() === "DER_OWNER";
+  const endpoint = isDerOwner ? "/api/me/ders" : "/api/ders";
+
   const [ders, setDers] = useState<DER[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiGet<unknown>(BROKER_URL, "/api/ders").then(normalizeDers).then(setDers).catch(e => setError(String(e))).finally(() => setLoading(false));
-  }, []);
+    apiGet<unknown>(BROKER_URL, endpoint)
+      .then(normalizeDers)
+      .then(setDers)
+      .catch(e => setError(String(e)))
+      .finally(() => setLoading(false));
+  }, [endpoint]);
 
   const byType = ders.reduce<Record<string, DER[]>>((acc, d) => ({ ...acc, [d.type]: [...(acc[d.type] ?? []), d] }), {});
 
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">DER Assets</h1>
-        <div className="page-subtitle">Distributed Energy Resources registered on the platform</div>
+        <h1 className="page-title">{isDerOwner ? "My DER Assets" : "DER Assets"}</h1>
+        <div className="page-subtitle">
+          {isDerOwner
+            ? "Distributed Energy Resources provisioned and linked to your microgrid"
+            : "Distributed Energy Resources registered across all grid microgrids"}
+        </div>
       </div>
 
       {!loading && !error && (
