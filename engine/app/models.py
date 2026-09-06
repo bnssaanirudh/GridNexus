@@ -134,6 +134,9 @@ class UserOnboarding(Base):
     hiddenCapacity = Column(String, nullable=True)
     hiddenBattery = Column(String, nullable=True)
     hiddenGenCost = Column(String, nullable=True)
+    reviewedBy = Column(String, nullable=True)
+    reviewedAt = Column(DateTime(timezone=True), nullable=True)
+    reason = Column(String, nullable=True)
     createdAt = Column(DateTime(timezone=True), server_default=func.now())
     updatedAt = Column(DateTime(timezone=True), onupdate=func.now())
 

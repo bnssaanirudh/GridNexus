@@ -415,6 +415,11 @@ model UserOnboarding {
   hiddenBattery   String?
   hiddenGenCost   String?
 
+  // Administrative review metadata
+  reviewedBy      String?
+  reviewedAt      DateTime? @db.Timestamptz(6)
+  reason          String?
+
   createdAt       DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
   
