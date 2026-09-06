@@ -72,23 +72,25 @@ describe("Full Trade-Loop Failure Injection", () => {
     // Purge any rows written by a previous test run in this suite
     await prisma.$executeRawUnsafe(`DELETE FROM "energytransfers"`);
     await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
-    await prisma.$executeRawUnsafe(`DELETE FROM "beliefupdates" WHERE "negotiationId" = '${negotiation.id}'`);
+    await prisma.$executeRawUnsafe(`DELETE FROM "negotiationrounds" WHERE "negotiationId" = '${negotiation.id}'`);
   });
 
   it("rolls back entirely when the EnergyTransfer has an invalid microgrid FK", async () => {
     // Snapshot counts before the attempted commit
-    const beforeBelief  = await prisma.beliefUpdate.count({ where: { negotiationId: negotiation.id } });
+    const beforeRound   = await prisma.negotiationRound.count({ where: { negotiationId: negotiation.id } });
     const beforeReward  = await prisma.rlReward.count({    where: { negotiationId: negotiation.id } });
     const beforeTransfer = await prisma.energyTransfer.count({});
 
     let threw = false;
     try {
       await commitTrade({
-        beliefUpdate: {
+        negotiationRound: {
           negotiationId:      negotiation.id,
-          triggeringsignalid: oracleSignal.id,
-          beforeBelief:       0.1,
-          afterBelief:        0.9,
+          roundNumber:        1,
+          activeAgentId:      agent.id,
+          opponentAgentId:    agent.id,
+          action:             "ACCEPT",
+          surplus:            10.0,
           decisionSource:     "LLM",
         },
         rlReward: {
@@ -112,11 +114,11 @@ describe("Full Trade-Loop Failure Injection", () => {
     expect(threw).toBe(true);
 
     // ── No partial rows should be visible ─────────────────────────────────────
-    const afterBelief   = await prisma.beliefUpdate.count({ where: { negotiationId: negotiation.id } });
+    const afterRound    = await prisma.negotiationRound.count({ where: { negotiationId: negotiation.id } });
     const afterReward   = await prisma.rlReward.count({    where: { negotiationId: negotiation.id } });
     const afterTransfer = await prisma.energyTransfer.count({});
 
-    expect(afterBelief).toBe(beforeBelief);
+    expect(afterRound).toBe(beforeRound);
     expect(afterReward).toBe(beforeReward);
     expect(afterTransfer).toBe(beforeTransfer);
   });
@@ -124,11 +126,13 @@ describe("Full Trade-Loop Failure Injection", () => {
   it("allows a valid commit after a previously failed transaction (connection is not poisoned)", async () => {
     // After the failure above, the Prisma connection pool should still work.
     const result = await commitTrade({
-      beliefUpdate: {
+      negotiationRound: {
         negotiationId:      negotiation.id,
-        triggeringsignalid: oracleSignal.id,
-        beforeBelief:       0.3,
-        afterBelief:        0.7,
+        roundNumber:        2,
+        activeAgentId:      agent.id,
+        opponentAgentId:    agent.id,
+        action:             "ACCEPT",
+        surplus:            10.0,
         decisionSource:     "DQN_GATE",
       },
       rlReward: {

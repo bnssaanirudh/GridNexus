@@ -145,7 +145,7 @@ describe("Full Trade-Loop Integration", () => {
     // Run negotiation session
     const done = new Promise<void>((resolve) => {
       clientSocket.on("negotiation_complete", (data: any) => {
-        expect(data.status).toBe("ACCEPTED");
+        expect(data.status).toBe("COMMITTED");
         expect(data.finalRound).toBe(3);
         resolve();
       });
@@ -208,7 +208,7 @@ describe("Full Trade-Loop Integration", () => {
 
     const done = new Promise<void>((resolve) => {
       clientSocket.on("negotiation_complete", (data: any) => {
-        expect(data.status).toBe("REJECTED");
+        expect(data.status).toBe("WALKED_AWAY");
         resolve();
       });
     });

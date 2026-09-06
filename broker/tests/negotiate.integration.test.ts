@@ -150,6 +150,10 @@ describe("WebSocket Negotiation Integration", () => {
       data: {
         negotiationId: neg.id,
         triggeringsignalid: dummySignal.id,
+        prior: 0,
+        likelihood: 0.5,
+        posterior: 15.0,
+        confidence: 0.5,
         beforeBelief: 0,
         afterBelief: 15.0
       }
@@ -176,7 +180,7 @@ describe("WebSocket Negotiation Integration", () => {
 
     const promise = new Promise<void>((resolve) => {
       newSocket.on("negotiation_complete", (data) => {
-        expect(data.status).toBe("ACCEPTED");
+        expect(data.status).toBe("COMMITTED");
         expect(data.finalRound).toBe(4); // Round 2=counter, Round 3=counter, Round 4=accept
         resolve();
       });

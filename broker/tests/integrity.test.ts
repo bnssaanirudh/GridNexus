@@ -94,7 +94,10 @@ describe("Audit Trail Hardening ", () => {
           toMicrogridId: mg2.id,
           amount: 50.0,
           price: 5.0,
-          stabilitycheckid: sc.id
+          stabilitycheckid: sc.id,
+          startTime: new Date(),
+          intervalMinutes: 60,
+          averagePowerKw: 50.0
         }
       });
 
@@ -142,7 +145,10 @@ describe("Audit Trail Hardening ", () => {
           toMicrogridId: mg2.id,
           amount: 10.0,
           price: 2.0,
-          stabilitycheckid: sc.id
+          stabilitycheckid: sc.id,
+          startTime: new Date(),
+          intervalMinutes: 60,
+          averagePowerKw: 10.0
         }
       });
 

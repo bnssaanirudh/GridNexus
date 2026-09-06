@@ -47,11 +47,13 @@ describe("commitTrade Transaction", () => {
       return;
     }
     const result = await commitTrade({
-      beliefUpdate: {
+      negotiationRound: {
         negotiationId: negotiation.id,
-        triggeringsignalid: oracleSignal.id,
-        beforeBelief: 0.1,
-        afterBelief: 0.2
+        roundNumber: 1,
+        activeAgentId: agent1.id,
+        opponentAgentId: agent1.id,
+        action: "ACCEPT",
+        surplus: 10.0
       },
       rlReward: {
         agentId: agent1.id,
@@ -67,7 +69,7 @@ describe("commitTrade Transaction", () => {
       }
     });
 
-    expect(result.beliefUpdate).toBeDefined();
+    expect(result.negotiationRound).toBeDefined();
     expect(result.rlReward).toBeDefined();
     expect(result.energyTransfer).toBeDefined();
 
@@ -87,11 +89,13 @@ describe("commitTrade Transaction", () => {
     let errorThrown = false;
     try {
       await commitTrade({
-        beliefUpdate: {
+        negotiationRound: {
           negotiationId: failNegotiation.id,
-          triggeringsignalid: oracleSignal.id,
-          beforeBelief: 0.1,
-          afterBelief: 0.2
+          roundNumber: 1,
+          activeAgentId: agent1.id,
+          opponentAgentId: agent1.id,
+          action: "ACCEPT",
+          surplus: 10.0
         },
         rlReward: {
           agentId: agent1.id,
@@ -112,11 +116,11 @@ describe("commitTrade Transaction", () => {
 
     expect(errorThrown).toBe(true);
 
-    const beliefUpdates = await prisma.beliefUpdate.findMany({ where: { negotiationId: failNegotiation.id } });
+    const negotiationRounds = await prisma.negotiationRound.findMany({ where: { negotiationId: failNegotiation.id } });
     const rlRewards = await prisma.rlReward.findMany({ where: { negotiationId: failNegotiation.id } });
     
     // Ensure the rows from the same call never persisted due to rollback
-    expect(beliefUpdates.length).toBe(0);
+    expect(negotiationRounds.length).toBe(0);
     expect(rlRewards.length).toBe(0);
   });
 });
