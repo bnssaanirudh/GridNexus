@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 // and deterministically negotiating an energy trade without relying on an LLM.
 // It is intended for demonstrations and end-to-end testing of the negotiation loop.
 
-const BROKER_URL = process.env.BROKER_URL || "http://localhost:8000/negotiate";
+const BROKER_URL = process.env.BROKER_URL || "http://localhost:3000/negotiate";
 
 class DeterministicAgent {
   public id: string;

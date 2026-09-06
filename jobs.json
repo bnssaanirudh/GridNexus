@@ -1,0 +1,671 @@
+{
+  "total_count": 8,
+  "jobs": [
+    {
+      "id": 101394345759,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5LvHw",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394345759",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394345759",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-05T23:33:20Z",
+      "started_at": "2026-09-05T23:33:22Z",
+      "completed_at": "2026-09-05T23:37:53Z",
+      "name": "Broker Tests (Node.js)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-05T23:33:22Z",
+          "completed_at": "2026-09-05T23:33:23Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-05T23:33:23Z",
+          "completed_at": "2026-09-05T23:33:48Z"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-05T23:33:48Z",
+          "completed_at": "2026-09-05T23:33:49Z"
+        },
+        {
+          "name": "Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-05T23:33:49Z",
+          "completed_at": "2026-09-05T23:33:53Z"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-09-05T23:33:53Z",
+          "completed_at": "2026-09-05T23:34:01Z"
+        },
+        {
+          "name": "Generate Prisma client",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-09-05T23:34:01Z",
+          "completed_at": "2026-09-05T23:34:02Z"
+        },
+        {
+          "name": "Apply DB Migrations",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-09-05T23:34:02Z",
+          "completed_at": "2026-09-05T23:34:03Z"
+        },
+        {
+          "name": "Run Jest tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 8,
+          "started_at": "2026-09-05T23:34:03Z",
+          "completed_at": "2026-09-05T23:37:52Z"
+        },
+        {
+          "name": "Post Set up Node.js",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 14,
+          "started_at": "2026-09-05T23:37:52Z",
+          "completed_at": "2026-09-05T23:37:52Z"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-09-05T23:37:52Z",
+          "completed_at": "2026-09-05T23:37:52Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-09-05T23:37:52Z",
+          "completed_at": "2026-09-05T23:37:52Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-09-05T23:37:52Z",
+          "completed_at": "2026-09-05T23:37:52Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394345759",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000498,
+      "runner_name": "GitHub Actions 1000000498",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 101394345827,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5LvYw",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394345827",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394345827",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-09-05T23:33:20Z",
+      "started_at": "2026-09-05T23:33:22Z",
+      "completed_at": "2026-09-05T23:36:20Z",
+      "name": "Docker Compose Smoke Test",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-05T23:33:23Z",
+          "completed_at": "2026-09-05T23:33:23Z"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-05T23:33:23Z",
+          "completed_at": "2026-09-05T23:33:25Z"
+        },
+        {
+          "name": "Set up environment files",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-05T23:33:25Z",
+          "completed_at": "2026-09-05T23:33:25Z"
+        },
+        {
+          "name": "Start Docker Compose",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-05T23:33:25Z",
+          "completed_at": "2026-09-05T23:35:58Z"
+        },
+        {
+          "name": "Wait for services to become healthy",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-09-05T23:35:58Z",
+          "completed_at": "2026-09-05T23:36:16Z"
+        },
+        {
+          "name": "Curl health endpoints",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-09-05T23:36:16Z",
+          "completed_at": "2026-09-05T23:36:16Z"
+        },
+        {
+          "name": "Stop Docker Compose",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-09-05T23:36:16Z",
+          "completed_at": "2026-09-05T23:36:18Z"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-09-05T23:36:18Z",
+          "completed_at": "2026-09-05T23:36:18Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-09-05T23:36:18Z",
+          "completed_at": "2026-09-05T23:36:18Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394345827",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000499,
+      "runner_name": "GitHub Actions 1000000499",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 101394345844,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5LvdA",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394345844",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394345844",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-09-05T23:33:20Z",
+      "started_at": "2026-09-05T23:33:22Z",
+      "completed_at": "2026-09-05T23:35:12Z",
+      "name": "Adversarial Stress Tests (Python)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-05T23:33:23Z",
+          "completed_at": "2026-09-05T23:33:24Z"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-05T23:33:24Z",
+          "completed_at": "2026-09-05T23:33:26Z"
+        },
+        {
+          "name": "Set up Python",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-05T23:33:26Z",
+          "completed_at": "2026-09-05T23:33:26Z"
+        },
+        {
+          "name": "Install Poetry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-05T23:33:26Z",
+          "completed_at": "2026-09-05T23:33:36Z"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-09-05T23:33:36Z",
+          "completed_at": "2026-09-05T23:34:47Z"
+        },
+        {
+          "name": "Install torch (CPU wheel)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-09-05T23:34:47Z",
+          "completed_at": "2026-09-05T23:35:01Z"
+        },
+        {
+          "name": "Run adversarial test suite",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-09-05T23:35:01Z",
+          "completed_at": "2026-09-05T23:35:09Z"
+        },
+        {
+          "name": "Post Set up Python",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-09-05T23:35:09Z",
+          "completed_at": "2026-09-05T23:35:09Z"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-09-05T23:35:09Z",
+          "completed_at": "2026-09-05T23:35:10Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-09-05T23:35:10Z",
+          "completed_at": "2026-09-05T23:35:10Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394345844",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000500,
+      "runner_name": "GitHub Actions 1000000500",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 101394345871,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5Lvjw",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394345871",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394345871",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-05T23:33:20Z",
+      "started_at": "2026-09-05T23:33:22Z",
+      "completed_at": "2026-09-05T23:35:56Z",
+      "name": "Engine Tests (Python)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-05T23:33:23Z",
+          "completed_at": "2026-09-05T23:33:24Z"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-05T23:33:24Z",
+          "completed_at": "2026-09-05T23:33:27Z"
+        },
+        {
+          "name": "Set up Python",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-05T23:33:27Z",
+          "completed_at": "2026-09-05T23:33:27Z"
+        },
+        {
+          "name": "Install Poetry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-05T23:33:27Z",
+          "completed_at": "2026-09-05T23:33:38Z"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-09-05T23:33:38Z",
+          "completed_at": "2026-09-05T23:34:46Z"
+        },
+        {
+          "name": "Install torch (CPU wheel – avoids 2.5 GB CUDA bundle)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-09-05T23:34:46Z",
+          "completed_at": "2026-09-05T23:35:00Z"
+        },
+        {
+          "name": "Run pytest with coverage",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 7,
+          "started_at": "2026-09-05T23:35:00Z",
+          "completed_at": "2026-09-05T23:35:53Z"
+        },
+        {
+          "name": "Upload coverage report",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-09-05T23:35:53Z",
+          "completed_at": "2026-09-05T23:35:53Z"
+        },
+        {
+          "name": "Post Set up Python",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 15,
+          "started_at": "2026-09-05T23:35:53Z",
+          "completed_at": "2026-09-05T23:35:53Z"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-09-05T23:35:53Z",
+          "completed_at": "2026-09-05T23:35:54Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-09-05T23:35:54Z",
+          "completed_at": "2026-09-05T23:35:54Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394345871",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000501,
+      "runner_name": "GitHub Actions 1000000501",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 101394345913,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5LvuQ",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394345913",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394345913",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-05T23:33:20Z",
+      "started_at": "2026-09-05T23:33:22Z",
+      "completed_at": "2026-09-05T23:33:37Z",
+      "name": "Command Center Build (Node.js)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-05T23:33:22Z",
+          "completed_at": "2026-09-05T23:33:23Z"
+        },
+        {
+          "name": "Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-09-05T23:33:23Z",
+          "completed_at": "2026-09-05T23:33:24Z"
+        },
+        {
+          "name": "Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-05T23:33:24Z",
+          "completed_at": "2026-09-05T23:33:28Z"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-09-05T23:33:28Z",
+          "completed_at": "2026-09-05T23:33:33Z"
+        },
+        {
+          "name": "Run ESLint",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-09-05T23:33:33Z",
+          "completed_at": "2026-09-05T23:33:35Z"
+        },
+        {
+          "name": "Run Vitest",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-09-05T23:33:35Z",
+          "completed_at": "2026-09-05T23:33:35Z"
+        },
+        {
+          "name": "Build frontend",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-09-05T23:33:35Z",
+          "completed_at": "2026-09-05T23:33:35Z"
+        },
+        {
+          "name": "Post Set up Node.js",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 13,
+          "started_at": "2026-09-05T23:33:35Z",
+          "completed_at": "2026-09-05T23:33:35Z"
+        },
+        {
+          "name": "Post Checkout code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-09-05T23:33:35Z",
+          "completed_at": "2026-09-05T23:33:35Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-09-05T23:33:35Z",
+          "completed_at": "2026-09-05T23:33:36Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394345913",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000502,
+      "runner_name": "GitHub Actions 1000000502",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 101394877299,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5sLcw",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394877299",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394877299",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-09-05T23:37:54Z",
+      "started_at": "2026-09-05T23:37:56Z",
+      "completed_at": "2026-09-05T23:37:58Z",
+      "name": "✅ All checks passed (merge gate)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-09-05T23:37:56Z",
+          "completed_at": "2026-09-05T23:37:57Z"
+        },
+        {
+          "name": "Check all jobs succeeded",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 2,
+          "started_at": "2026-09-05T23:37:57Z",
+          "completed_at": "2026-09-05T23:37:57Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-09-05T23:37:57Z",
+          "completed_at": "2026-09-05T23:37:57Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394877299",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000503,
+      "runner_name": "GitHub Actions 1000000503",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 101394877629,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5sMvQ",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394877629",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394877629",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-09-05T23:37:54Z",
+      "started_at": "2026-09-05T23:37:54Z",
+      "completed_at": "2026-09-05T23:37:54Z",
+      "name": "Broker Integration Tests (Full Trade-Loop)",
+      "steps": [
+
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394877629",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    },
+    {
+      "id": 101394877704,
+      "run_id": 33998982480,
+      "workflow_name": "CI",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/runs/33998982480",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOThCzW88AAAAXm5sNCA",
+      "head_sha": "53a80cbd21cfb12c307ac1aba8c04518b3221721",
+      "url": "https://api.github.com/repos/bnssaanirudh/GridNexus/actions/jobs/101394877704",
+      "html_url": "https://github.com/bnssaanirudh/GridNexus/actions/runs/33998982480/job/101394877704",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-09-05T23:37:54Z",
+      "started_at": "2026-09-05T23:37:54Z",
+      "completed_at": "2026-09-05T23:37:54Z",
+      "name": "Golden Path: Oracle → Ledger E2E",
+      "steps": [
+
+      ],
+      "check_run_url": "https://api.github.com/repos/bnssaanirudh/GridNexus/check-runs/101394877704",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    }
+  ]
+}

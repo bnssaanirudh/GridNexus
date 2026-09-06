@@ -27,7 +27,7 @@
 ## Step 1: Clone & Navigate
 
 ```bash
-git clone https://github.com/Meet9315/GridNexus.git
+git clone https://github.com/bnssaanirudh/GridNexus.git
 cd GridNexus
 ```
 
