@@ -9,34 +9,86 @@ import { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
-const NAV_SECTIONS = [
-  {
-    label: "Monitoring",
-    items: [
-      { path: "/dashboard",              icon: "◈", label: "Overview",       end: true },
-      { path: "/dashboard/workflow",     icon: "⎈", label: "System Workflow" },
-      { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
-      { path: "/dashboard/coalitions",   icon: "◎", label: "Coalitions" },
-      { path: "/dashboard/grid",         icon: "⟁", label: "Grid Topology" },
-      { path: "/dashboard/oracle",       icon: "◉", label: "Oracle" },
-    ],
-  },
-  {
-    label: "Assets & Settlement",
-    items: [
-      { path: "/dashboard/ders",         icon: "⬡", label: "DER Assets" },
-      { path: "/dashboard/settlements",  icon: "▣", label: "Settlements" },
-    ],
-  },
-  {
-    label: "Governance",
-    items: [
-      { path: "/dashboard/audit",        icon: "⌁", label: "Audit Chain" },
-      { path: "/dashboard/experiments",  icon: "⊗", label: "Experiments" },
-      { path: "/dashboard/health",       icon: "◌", label: "System Health" },
-    ],
-  },
-];
+function getNavSections(role?: string) {
+  const normalized = (role ?? "").toUpperCase();
+
+  if (normalized === "DER_OWNER") {
+    return [
+      {
+        label: "Autonomous Agent",
+        items: [
+          { path: "/dashboard/my-agent", icon: "⚡", label: "My Energy Agent", end: true },
+        ],
+      },
+      {
+        label: "Assets & Settlement",
+        items: [
+          { path: "/dashboard/ders", icon: "⬡", label: "My DER Assets" },
+          { path: "/dashboard/settlements", icon: "▣", label: "My Settlements" },
+        ],
+      },
+      {
+        label: "Transparency & Audit",
+        items: [
+          { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
+          { path: "/dashboard/audit", icon: "⌁", label: "Audit Ledger" },
+        ],
+      },
+    ];
+  }
+
+  if (normalized === "VIEWER" || normalized === "AUDITOR") {
+    return [
+      {
+        label: "Monitoring",
+        items: [
+          { path: "/dashboard", icon: "◈", label: "Overview", end: true },
+          { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
+          { path: "/dashboard/grid", icon: "⟁", label: "Grid Topology" },
+          { path: "/dashboard/oracle", icon: "◉", label: "Oracle" },
+        ],
+      },
+      {
+        label: "Settlement & Audit",
+        items: [
+          { path: "/dashboard/settlements", icon: "▣", label: "Settlements" },
+          { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
+        ],
+      },
+    ];
+  }
+
+  // ADMIN / GRID_OPERATOR
+  return [
+    {
+      label: "Monitoring",
+      items: [
+        { path: "/dashboard", icon: "◈", label: "Overview", end: true },
+        { path: "/dashboard/my-agent", icon: "⚡", label: "My Energy Agent" },
+        { path: "/dashboard/workflow", icon: "⎈", label: "System Workflow" },
+        { path: "/dashboard/negotiations", icon: "⇄", label: "Negotiations" },
+        { path: "/dashboard/coalitions", icon: "◎", label: "Coalitions" },
+        { path: "/dashboard/grid", icon: "⟁", label: "Grid Topology" },
+        { path: "/dashboard/oracle", icon: "◉", label: "Oracle" },
+      ],
+    },
+    {
+      label: "Assets & Settlement",
+      items: [
+        { path: "/dashboard/ders", icon: "⬡", label: "DER Assets" },
+        { path: "/dashboard/settlements", icon: "▣", label: "Settlements" },
+      ],
+    },
+    {
+      label: "Governance",
+      items: [
+        { path: "/dashboard/audit", icon: "⌁", label: "Audit Chain" },
+        { path: "/dashboard/experiments", icon: "⊗", label: "Experiments" },
+        { path: "/dashboard/health", icon: "◌", label: "System Health" },
+      ],
+    },
+  ];
+}
 
 function useClock() {
   const [time, setTime] = useState(() => new Date().toUTCString().slice(17, 25));
@@ -65,6 +117,8 @@ export default function DashboardShell() {
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
     : "G";
+
+  const sections = getNavSections(user?.role);
 
   return (
     <div className="app-shell">
@@ -142,7 +196,7 @@ export default function DashboardShell() {
           role="navigation"
           aria-label="Dashboard navigation"
         >
-          {NAV_SECTIONS.map(section => (
+          {sections.map(section => (
             <div key={section.label}>
               <div className="sidebar-section-label">{section.label}</div>
               {section.items.map(item => (

@@ -162,3 +162,36 @@ export function apiPost<T>(
   });
 }
 
+export function apiPut<T>(
+  baseUrl: string,
+  path: string,
+  body: unknown,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  return requestJson<T>(baseUrl, path, {
+    ...options,
+    method: "PUT",
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
+export function apiPatch<T>(
+  baseUrl: string,
+  path: string,
+  body: unknown,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  return requestJson<T>(baseUrl, path, {
+    ...options,
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
+

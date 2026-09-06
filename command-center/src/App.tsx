@@ -18,6 +18,7 @@ import OverviewPage   from "./pages/OverviewPage";
 import AuthGuard      from "./components/AuthGuard";
 import {
   AuthContext,
+  useAuth,
   type AuthUser,
   getStoredUser,
   isAuthenticated,
@@ -29,6 +30,7 @@ import {
 } from "./lib/auth";
 
 // Lazy-loaded dashboard pages
+const MyAgentPage         = lazy(() => import("./pages/MyAgentPage"));
 const NegotiationFeedPage = lazy(() => import("./pages/NegotiationFeedPage"));
 const CoalitionsPage      = lazy(() => import("./pages/CoalitionsPage"));
 const GridPage            = lazy(() => import("./pages/GridPage"));
@@ -39,6 +41,14 @@ const AuditPage           = lazy(() => import("./pages/AuditPage"));
 const ExperimentsPage     = lazy(() => import("./pages/ExperimentsPage"));
 const SystemHealthPage    = lazy(() => import("./pages/SystemHealthPage"));
 const WorkflowPage        = lazy(() => import("./pages/WorkflowPage"));
+
+function DashboardIndex() {
+  const { user } = useAuth();
+  if (user?.role?.toUpperCase() === "DER_OWNER") {
+    return <Navigate to="/dashboard/my-agent" replace />;
+  }
+  return <OverviewPage />;
+}
 
 function PageLoader() {
   return (
@@ -121,7 +131,10 @@ export default function App() {
               </AuthGuard>
             }
           >
-            <Route index element={<OverviewPage />} />
+            <Route index element={<DashboardIndex />} />
+            <Route path="my-agent" element={
+              <Suspense fallback={<PageLoader />}><MyAgentPage /></Suspense>
+            } />
             <Route path="workflow" element={
               <Suspense fallback={<PageLoader />}><WorkflowPage /></Suspense>
             } />
