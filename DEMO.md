@@ -1,235 +1,121 @@
-# GridNexus Demo Script
+# GridNexus Product Demo Walkthrough
 
-> **Prompt 30 deliverable** – Reproducible clean-checkout walkthrough.
->
-> This script walks a presenter through a complete GridNexus demo from
-> a fresh clone to a live, observable multi-agent energy trading session.
-> Every command is copy-paste ready.
+> **Interactive Walkthrough & Clean-Checkout Guide**  
+> Demonstrates the complete GridNexus multi-tenant autonomous energy marketplace from a fresh clone to live autonomous agent negotiation, admin governance, and cryptographic audit verification.
 
 ---
 
 ## Prerequisites
 
-| Requirement | Min Version | Install |
-|-------------|-------------|---------|
-| Docker Desktop | 24.x | [docker.com](https://www.docker.com/products/docker-desktop/) |
-| Docker Compose | v2.x | included with Docker Desktop |
-| Git | 2.x | [git-scm.com](https://git-scm.com/) |
-| 8 GB free RAM | — | — |
-| 6 GB free disk | — | — |
-
-> [!IMPORTANT]
-> The Engine image pulls PyTorch CPU-only (~2 GB). First `docker compose up --build`
-> takes **5–10 minutes** on a fast connection. Subsequent starts take ~30 seconds.
+| Requirement | Minimum Version | Notes |
+| :--- | :--- | :--- |
+| **Node.js** | 20.x or higher | With `npm` |
+| **Python** | 3.11 or higher | With `pip` (or `poetry`) |
+| **Docker Desktop** | 24.x or higher | With Docker Compose v2 |
+| **RAM** | 8 GB free | |
+| **Disk** | 6 GB free | |
 
 ---
 
-## Step 1: Clone & Navigate
+## 1. Quick Start (Simulation Mode)
 
+### Step 1.1: Clone and Configure Environment
 ```bash
 git clone https://github.com/bnssaanirudh/GridNexus.git
 cd GridNexus
+
+# Copy configuration files
+cp broker/.env.example broker/.env
+cp engine/.env.example engine/.env
 ```
 
----
-
-## Step 2: Configure Environment
-
-```bash
-# Copy the example env file (no secrets required for demo)
-cp .env.example .env          # if present, otherwise defaults are built-in
-```
-
-> [!NOTE]
-> All services default to localhost ports. No external API keys are required.
-> The AI Oracle uses a local sentence-transformer model that is downloaded
-> automatically on first run.
-
----
-
-## Step 3: Start the Full Stack
-
+### Step 1.2: Start Services via Docker Compose
 ```bash
 docker compose up --build -d
 ```
 
-Expected output (truncated):
-```
-[+] Building ...  ✔ engine built
-[+] Building ...  ✔ broker built
-[+] Building ...  ✔ command-center built
-[+] Running 5/5
- ✔ Container gridnexus-postgres        Healthy
- ✔ Container gridnexus-redis           Healthy
- ✔ Container gridnexus-engine          Healthy
- ✔ Container gridnexus-broker          Healthy
- ✔ Container gridnexus-command-center  Healthy
-```
-
-**Wait for all 5 containers to be `Healthy`:**
+Verify all services reach `Healthy` status:
 ```bash
-# Poll until all healthy (or timeout after 5 minutes)
 docker compose ps
 ```
 
----
-
-## Step 4: Verify Services
-
-```bash
-# Broker health (Layer 2)
-curl http://localhost:3000/health
-# → {"status":"ok"}
-
-# Engine health (Layer 1)
-curl http://localhost:8000/health
-# → {"status":"ok"}
-
-# Command Center (Layer 3 UI)
-open http://localhost:5173     # macOS
-start http://localhost:5173    # Windows
-xdg-open http://localhost:5173 # Linux
-```
+Expected healthy containers:
+- `gridnexus-postgres` (Port 5432)
+- `gridnexus-redis` (Port 6379)
+- `gridnexus-engine` (Port 8000)
+- `gridnexus-broker` (Port 3000)
+- `gridnexus-command-center` (Port 5173)
 
 ---
 
-## Step 5: Run the Automated Test Suite (Optional Validation)
+## 2. Execute the 26-Step DER-Owner Golden Path Test
 
-```bash
-# Broker integration tests (requires running stack)
-cd broker && npm test && cd ..
-
-# Engine unit + stability tests
-cd engine && poetry run pytest -q && cd ..
-```
-
----
-
-## Step 6: Observe the Oracle → Belief → Stability → Trade Loop
-
-### 6a. Watch the Oracle Broadcast
-
-The Oracle broadcasts grid conditions every 10 seconds. Watch it live:
-
-```bash
-docker compose logs broker -f | grep "oracle"
-```
-
-Expected:
-```
-gridnexus-broker | [Oracle] Broadcasting signal: SOLAR_SURGE → 6 subscribers
-```
-
-### 6b. Open the Command Center Dashboard
-
-Navigate to **http://localhost:5173** in your browser.
-
-You should see:
-- 📊 **Oracle Timeline** – live signal feed updating every 10 s
-- 🔋 **Agent Beliefs** – each microgrid's current negotiation belief
-- 🌍 **Topology Map** – planar graph showing line utilization
-- 💹 **Trade Log** – committed energy transfers with prices
-
-### 6c. Trigger a Live Negotiation Session
-
-Open a second terminal and run our deterministic simulator:
+The single most comprehensive automated verification of the platform is the **End-to-End Golden Path Test**, covering registration, onboarding, administrative approval, transactional provisioning, agent credentialing, Oracle broadcasting, Rubinstein bargaining, StabilityGate, GridGate, idempotent settlement, and cross-tenant data isolation:
 
 ```bash
 cd broker
-npx tsx scripts/demo-negotiation.ts
+npx vitest run tests/golden-path.test.ts
 ```
 
-Watch the Command Center dashboard — you will see:
-1. Rounds appearing in the Trade Log
-2. Stability margin updating in real time
-3. If coalition is stable: `TRADE COMMITTED` appears in green
-
-### 6d. Load Test (Optional – Requires k6)
-
-```bash
-# Install k6 if not already installed
-# https://k6.io/docs/get-started/installation/
-
-./scripts/run_load_test.sh
-# Runs 200 concurrent agents for 60 seconds
-# Results written to load-tests/results/LOAD_TEST_REPORT.md
-```
+All 16 test stages execute sequentially against real database models and business logic:
+- `1-2`: Create seller, buyer, and admin users; issue role-scoped JWTs.
+- `3-5`: DER owners register sites and submit private constraints (encrypted with AES-256-GCM).
+- `6-7`: Administrator approves the application; transactional provisioning fires.
+- `8-11`: `Microgrid`, `DER`, `Agent`, and `UserMicrogridMembership` rows verified in Postgres.
+- `12-14`: DER owners receive scoped access; internal agent runtime acquires short-lived credentials.
+- `15-18`: Oracle signal triggers belief updates; autonomous agents load owner constraints and bargain.
+- `19-20`: Trade passes StabilityGate (cutting-planes LP) and GridGate (OPF power balance).
+- `21-23`: Atomic settlement commits; `EnergyTransfer` and `AuditEvent` records persist with SHA-256 chaining.
+- `24-26`: Owners inspect only their own trades; admin views global grid state; unauthorized cross-tenant reads return 401/403.
+- `BONUS`: Settlement idempotency guarantees zero double-settlement on identical idempotency keys.
 
 ---
 
-## Step 7: Explore the API
+## 3. Interactive Web Command Center Demo
 
-All API docs are available via FastAPI's built-in Swagger UI:
+Open your browser to `http://localhost:5173`.
 
-- **Engine API**: http://localhost:8000/docs
-- **Engine ReDoc**: http://localhost:8000/redoc
-- **Broker REST endpoints**: http://localhost:3000/api/analytics, /api/oracle-signals, /api/topology
+### 3.1. Explore as DER Owner
+1. Navigate to `/login` and sign in with demo credentials or register a new owner account.
+2. Observe role-tailored navigation in the sidebar:
+   - **⚡ My Agent**: Inspect autonomous agent status, active negotiation policies, and set pricing boundaries (e.g., minimum sell price: \$0.12/kWh, maximum buy price: \$0.08/kWh).
+   - **⬡ My DER**: View nameplate ratings and operational power bounds of registered assets.
+   - **⇄ My Trades**: Live WebSocket event feed of autonomous bargaining rounds.
+   - **▣ My Settlements**: Real-time list of committed trades with energy transfers and pricing.
+   - **⌁ My Audit**: Cryptographic SHA-256 hash chain explorer verifying your microgrid's immutable events.
+
+### 3.2. Explore as Administrator / Grid Operator
+1. Switch to an administrator session (role `ADMIN`).
+2. Observe administrative governance consoles:
+   - **🛡 Owner Approvals**: Review pending DER onboarding applications, inspect technical specs, and approve or suspend microgrids.
+   - **⚛ Oracle Sources**: Add, verify, or revoke external weather and market tariff data feeds.
+   - **⟁ Microgrids & Network Topology**: Visual planar graph showing bus voltages and AC/DC line loading margins.
+   - **◌ System Health & Diagnostics**: Real-time service readiness probes and simulation vs. operational data classification.
 
 ---
 
-## Step 8: Stop the Stack
+## 4. Security & Sensitive Data Verification
+
+GridNexus includes a dedicated security audit suite validating the absence of data leaks and strict tenant isolation:
 
 ```bash
-docker compose down
-# To also remove volumes (DB data):
+cd broker
+npx vitest run tests/authorization-and-sensitive-data-audit.test.ts
+```
+
+Verifications executed:
+- Passwords are never returned in login/registration payloads.
+- Secret operational variables (`hiddengenerationcost`, `hiddenbatterycapacity`) are encrypted at rest and never exposed over public or tenant APIs.
+- Agent JWTs remain strictly internal to the backend worker runtime and are never delivered to the client browser.
+- Explainability service answers queries without leaking competitor utility functions or raw LLM chain-of-thought.
+- Database triggers strictly block `DELETE` operations on append-only audit tables.
+
+---
+
+## 5. Teardown
+
+To cleanly shut down the demo environment:
+```bash
 docker compose down -v
 ```
-
----
-
-## Architecture Summary
-
-```
-┌─────────────────────────────────────────────────────────┐
-│              Layer 3: Command Center (React/Vite)        │
-│              http://localhost:5173                       │
-└──────────────────────┬──────────────────────────────────┘
-                       │ REST + Socket.IO
-┌──────────────────────▼──────────────────────────────────┐
-│              Layer 2: Broker (Express + BullMQ)          │
-│              http://localhost:3000                       │
-│  • Rubinstein bargaining (WebSocket /negotiate)          │
-│  • Oracle broadcast queue (Redis/BullMQ)                 │
-│  • Integrity check scheduler                             │
-└──────────────────────┬──────────────────────────────────┘
-                       │ HTTP
-┌──────────────────────▼──────────────────────────────────┐
-│              Layer 1: Engine (FastAPI + PyTorch)         │
-│              http://localhost:8000                       │
-│  • Stability solver (Shapley / core / bankruptcy)        │
-│  • DQN + MAPPO policy training                           │
-│  • RAG-based oracle intelligence                         │
-│  • Planar graph topology analysis                        │
-└─────────────────────────────────────────────────────────┘
-                       │
-         ┌─────────────┼─────────────┐
-         ▼             ▼             ▼
-      Postgres       Redis        pgvector
-```
-
----
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---------|-----|
-| `broker` keeps restarting | Check `docker compose logs broker`. Prisma DB migration may be pending. Run `docker compose exec broker npx prisma migrate deploy` |
-| `engine` health=starting for >3 min | First run downloads ~2 GB model. Wait, or check `docker compose logs engine` |
-| `command-center` returns 502 | Broker may not be fully up. Wait 30 s and refresh |
-| Port 5432 conflict | Stop local Postgres: `brew services stop postgresql` or `sudo service postgresql stop` |
-| Docker out of disk | Run `docker system prune -f` to free space |
-
----
-
-## Key Files for Reviewers
-
-| File | Purpose |
-|------|---------|
-| [`docker-compose.yml`](docker-compose.yml) | Service orchestration |
-| [`broker/src/index.ts`](broker/src/index.ts) | Broker entry point |
-| [`engine/app/main.py`](engine/app/main.py) | Engine entry point |
-| [`engine/app/stability/`](engine/app/stability/) | Stability solver |
-| [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) | Engineering decisions |
-| [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) | Security audit |
-| [`docs/LOAD_TEST.md`](docs/LOAD_TEST.md) | Load test methodology |
-| [`load-tests/negotiation-load.js`](load-tests/negotiation-load.js) | k6 script |
+*(The `-v` flag removes ephemeral database volumes for a clean reset).*
