@@ -27,6 +27,7 @@ describe("Full Trade-Loop Failure Injection", () => {
   let negotiation: { id: string };
   let oracleSignal: { id: string };
   let stabilityCheck: { id: string };
+  let gridCert: { id: string };
   let agent: { id: string };
   let mg1: { id: string };
   let mg2: { id: string };
@@ -51,6 +52,7 @@ describe("Full Trade-Loop Failure Injection", () => {
     oracleSignal  = await prisma.oracleSignal.create({ data: { signalData: "{}" } });
     negotiation   = await prisma.negotiation.create({ data: { status: "PENDING" } });
     stabilityCheck = await prisma.stabilityCheck.create({ data: { isStable: true, margin: 5.0 } });
+    gridCert = await prisma.gridFeasibilityCertificate.create({ data: { networkVersion: 1, solver: "pandapower", solverVersion: "2.14.0", feasible: true, inputHash: "fail-h", resultHash: "fail-h" } });
     agent = await prisma.agent.create({ data: { type: "SELLER", microgridId: mg1.id } });
   });
 
@@ -103,7 +105,12 @@ describe("Full Trade-Loop Failure Injection", () => {
           toMicrogridId:   mg2.id,
           amount:          100,
           price:           0.1,
+          energyKwh:       100,
+          averagePowerKw:  100,
+          intervalMinutes: 60,
+          startTime:       new Date(),
           stabilitycheckid: stabilityCheck.id,
+          gridcertificateid: gridCert.id,
           negotiationId:   negotiation.id,
         },
       });
@@ -145,12 +152,17 @@ describe("Full Trade-Loop Failure Injection", () => {
         toMicrogridId:   mg2.id,
         amount:          150,
         price:           0.15,
+        energyKwh:       150,
+        averagePowerKw:  150,
+        intervalMinutes: 60,
+        startTime:       new Date(),
         stabilitycheckid: stabilityCheck.id,
+        gridcertificateid: gridCert.id,
         negotiationId:   negotiation.id,
       },
     });
 
-    expect(result.beliefUpdate).toBeDefined();
+    expect(result.negotiationRound).toBeDefined();
     expect(result.rlReward).toBeDefined();
     expect(result.energyTransfer).toBeDefined();
     expect(result.energyTransfer.amount.toNumber()).toBe(150);

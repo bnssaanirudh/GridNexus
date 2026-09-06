@@ -7,6 +7,8 @@ Tests for the Profit-Linked Reward Function and Temperature Policy.
 import os
 import random
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from app.rl.reward_fn import compute_reward, RewardBreakdown

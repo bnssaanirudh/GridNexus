@@ -24,13 +24,18 @@ import { encrypt } from "../../src/db/encryption.js";
 // Mock StabilityGate so the ACCEPT branch doesn't require a live Redis / BullMQ worker.
 // The real gate is covered by tests/integration/stability-gate.test.ts.
 // vi.hoisted ensures the prisma instance is available when the vi.mock factory executes.
-const { mockStabilityGateCheck } = vi.hoisted(() => {
+const { mockStabilityGateCheck, mockGridGateCheck } = vi.hoisted(() => {
   const mockStabilityGateCheck = vi.fn();
-  return { mockStabilityGateCheck };
+  const mockGridGateCheck = vi.fn();
+  return { mockStabilityGateCheck, mockGridGateCheck };
 });
 
 vi.mock("../../src/services/stabilityGate.js", () => ({
   StabilityGate: { check: mockStabilityGateCheck }
+}));
+
+vi.mock("../../src/services/gridGate.js", () => ({
+  GridGate: { check: mockGridGateCheck }
 }));
 
 const prisma = new PrismaClient();
@@ -115,6 +120,14 @@ describe("Full Trade-Loop Integration", () => {
     mockStabilityGateCheck.mockImplementation(async () => {
       const check = await prisma.stabilityCheck.create({ data: { isStable: true, margin: 10.0 } });
       return { passed: true, checkId: check.id, isStable: true, margin: 10.0 };
+    });
+
+    // Re-wire the GridGate mock implementation after vi.restoreAllMocks clears it.
+    mockGridGateCheck.mockImplementation(async () => {
+      const cert = await prisma.gridFeasibilityCertificate.create({
+        data: { networkVersion: 1, solver: "pandapower", solverVersion: "2.14.0", feasible: true, inputHash: "ft-h", resultHash: "ft-h" },
+      });
+      return { passed: true, certId: cert.id };
     });
   });
 

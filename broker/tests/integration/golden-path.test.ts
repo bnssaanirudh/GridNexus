@@ -41,13 +41,18 @@ import { encrypt } from "../../src/db/encryption.js";
 import { runBeliefUpdateCycle } from "../../src/services/beliefUpdateService.js";
 
 // ── Mock StabilityGate – real BullMQ worker not required ────────────────────
-const { mockStabilityGateCheck } = vi.hoisted(() => {
+const { mockStabilityGateCheck, mockGridGateCheck } = vi.hoisted(() => {
   const mockStabilityGateCheck = vi.fn();
-  return { mockStabilityGateCheck };
+  const mockGridGateCheck = vi.fn();
+  return { mockStabilityGateCheck, mockGridGateCheck };
 });
 
 vi.mock("../../src/services/stabilityGate.js", () => ({
   StabilityGate: { check: mockStabilityGateCheck },
+}));
+
+vi.mock("../../src/services/gridGate.js", () => ({
+  GridGate: { check: mockGridGateCheck },
 }));
 
 const prisma = new PrismaClient();
@@ -103,7 +108,7 @@ async function assertFkChain(signalId: string): Promise<void> {
 
   // ── Step 3: Negotiation (ACCEPTED bargaining session) must exist ────────
   const negotiation = await prisma.negotiation.findFirst({
-    where: { status: "ACCEPTED" },
+    where: { status: "COMMITTED" },
     include: {
       beliefUpdates: true,
       rlRewards: true,
@@ -111,7 +116,7 @@ async function assertFkChain(signalId: string): Promise<void> {
     },
   });
   expect(negotiation).not.toBeNull();
-  expect(negotiation!.status).toBe("ACCEPTED");
+  expect(negotiation!.status).toBe("COMMITTED");
 
   // ── Step 4: StabilityCheck must be linked and approved ──────────────────
   expect(negotiation!.energyTransfers.length).toBeGreaterThanOrEqual(1);
@@ -183,6 +188,14 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
       });
       stabilityCheckId = check.id;
       return { passed: true, checkId: check.id, isStable: true, margin: 12.5 };
+    });
+
+    // ── 3b. GridGate mock ──────────────────────────────────────────────────
+    const gridCert = await prisma.gridFeasibilityCertificate.create({
+      data: { networkVersion: 1, solver: "pandapower", solverVersion: "2.14.0", feasible: true, inputHash: "gp-h", resultHash: "gp-h" },
+    });
+    mockGridGateCheck.mockImplementation(async () => {
+      return { passed: true, certId: gridCert.id };
     });
 
     // ── 4. Start in-process broker WebSocket server ────────────────────────
@@ -281,7 +294,7 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
       const timeout = setTimeout(() => reject(new Error("Negotiation timed out")), 10_000);
       clientSocket.on("negotiation_complete", (data: any) => {
         clearTimeout(timeout);
-        expect(data.status).toBe("ACCEPTED");
+        expect(data.status).toBe("COMMITTED");
         resolve();
       });
     });

@@ -9,6 +9,8 @@ import os
 import random
 import torch
 import torch.nn as nn
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from app.agents.dqn_wrapper import DQNWrapper, NegotiationAction

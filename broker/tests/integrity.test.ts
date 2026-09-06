@@ -88,13 +88,16 @@ describe("Audit Trail Hardening ", () => {
       const mg1 = await prisma.microgrid.create({ data: { name: "MG1", type: "SOLAR", hiddenbatterycapacity: "100", hiddengenerationcost: "10" } });
       const mg2 = await prisma.microgrid.create({ data: { name: "MG2", type: "WIND", hiddenbatterycapacity: "100", hiddengenerationcost: "10" } });
       const sc = await prisma.stabilityCheck.create({ data: { isStable: true, margin: 10.0 } });
+      const gc = await prisma.gridFeasibilityCertificate.create({ data: { networkVersion: 1, solver: "pandapower", solverVersion: "2.14.0", feasible: true, inputHash: "h", resultHash: "h" } });
       const transfer = await prisma.energyTransfer.create({
         data: {
           fromMicrogridId: mg1.id,
           toMicrogridId: mg2.id,
           amount: 50.0,
           price: 5.0,
+          energyKwh: 50.0,
           stabilitycheckid: sc.id,
+          gridcertificateid: gc.id,
           startTime: new Date(),
           intervalMinutes: 60,
           averagePowerKw: 50.0
@@ -139,13 +142,17 @@ describe("Audit Trail Hardening ", () => {
       const mg2 = await prisma.microgrid.findFirst();
       if (!mg1 || !mg2) return;
 
+      const gc2 = await prisma.gridFeasibilityCertificate.create({ data: { networkVersion: 1, solver: "pandapower", solverVersion: "2.14.0", feasible: true, inputHash: "h2", resultHash: "h2" } });
+
       const transfer = await prisma.energyTransfer.create({
         data: {
           fromMicrogridId: mg1.id,
           toMicrogridId: mg2.id,
           amount: 10.0,
           price: 2.0,
+          energyKwh: 10.0,
           stabilitycheckid: sc.id,
+          gridcertificateid: gc2.id,
           startTime: new Date(),
           intervalMinutes: 60,
           averagePowerKw: 10.0

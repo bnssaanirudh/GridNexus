@@ -6,7 +6,7 @@ import { encrypt, decrypt } from "../src/db/encryption.js";
 const prisma = new PrismaClient();
 
 describe("commitTrade Transaction", () => {
-  let mg1: any, mg2: any, agent1: any, agent2: any, negotiation: any, oracleSignal: any, stabilityCheck: any;
+  let mg1: any, mg2: any, agent1: any, agent2: any, negotiation: any, oracleSignal: any, stabilityCheck: any, gridCert: any;
 
   beforeAll(async () => {
     try {
@@ -33,6 +33,16 @@ describe("commitTrade Transaction", () => {
     });
     stabilityCheck = await prisma.stabilityCheck.create({
       data: { isStable: true, margin: 10 }
+    });
+    gridCert = await prisma.gridFeasibilityCertificate.create({
+      data: {
+        networkVersion: 1,
+        solver: "pandapower",
+        solverVersion: "2.14.0",
+        feasible: true,
+        inputHash: "testhash",
+        resultHash: "testhash",
+      }
     });
   });
 
@@ -65,7 +75,13 @@ describe("commitTrade Transaction", () => {
         toMicrogridId: mg2.id,
         amount: 100,
         price: 0.1,
-        stabilitycheckid: stabilityCheck.id
+        energyKwh: 100,
+        averagePowerKw: 100,
+        intervalMinutes: 60,
+        startTime: new Date(),
+        stabilitycheckid: stabilityCheck.id,
+        gridcertificateid: gridCert.id,
+        negotiationId: negotiation.id
       }
     });
 
@@ -107,7 +123,13 @@ describe("commitTrade Transaction", () => {
           toMicrogridId: mg2.id,
           amount: 100,
           price: 0.1,
-          stabilitycheckid: stabilityCheck.id
+          energyKwh: 100,
+          averagePowerKw: 100,
+          intervalMinutes: 60,
+          startTime: new Date(),
+          stabilitycheckid: stabilityCheck.id,
+          gridcertificateid: gridCert.id,
+          negotiationId: negotiation.id
         }
       });
     } catch (e) {
