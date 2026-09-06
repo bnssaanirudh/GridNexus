@@ -45,12 +45,12 @@ interface PowerBIPanelProps {
 const getHost = () => (typeof window !== "undefined" && window.location?.hostname ? window.location.hostname : "127.0.0.1");
 
 export function PowerBIPanel({
-  brokerUrl = (import.meta as Record<string, any>).env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
-  embedUrl = (import.meta as Record<string, any>).env?.VITE_POWERBI_EMBED_URL ?? "",
+  brokerUrl = import.meta.env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
+  embedUrl = import.meta.env?.VITE_POWERBI_EMBED_URL ?? "",
   pollIntervalMs = 5000,
 }: PowerBIPanelProps): JSX.Element {
   const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [, setLoading] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<"native" | "iframe">(embedUrl ? "iframe" : "native");
 
   const fetchAnalytics = useCallback(async () => {

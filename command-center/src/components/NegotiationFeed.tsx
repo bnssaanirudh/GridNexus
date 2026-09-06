@@ -84,34 +84,34 @@ export function NegotiationFeed({ wsClient, maxEvents = 100 }: NegotiationFeedPr
     const unsubState = wsClient.onStateChange(setConnState);
 
     // round_update: emitted by broker each Rubinstein round
-    const onRound = (data: any) => {
+    const onRound = (data: Record<string, unknown>) => {
       addEvent({
         type: "round",
-        negotiationId: data.negotiationId ?? "?",
-        round: data.round ?? 0,
-        activeAgent: data.activeAgent ?? data.agentId ?? "?",
-        discountedSurplus: data.discountedSurplus ?? 0,
+        negotiationId: (data.negotiationId as string) ?? "?",
+        round: (data.round as number) ?? 0,
+        activeAgent: (data.activeAgent as string) ?? (data.agentId as string) ?? "?",
+        discountedSurplus: (data.discountedSurplus as number) ?? 0,
         timestamp: new Date(),
       });
     };
 
     // negotiation_complete: emitted once bargaining finishes
-    const onComplete = (data: any) => {
+    const onComplete = (data: Record<string, unknown>) => {
       addEvent({
         type: "complete",
-        negotiationId: data.negotiationId ?? "?",
-        status: data.status ?? "REJECTED",
-        finalRound: data.finalRound ?? 0,
+        negotiationId: (data.negotiationId as string) ?? "?",
+        status: (data.status as "ACCEPTED" | "REJECTED" | "MAX_ROUNDS_REACHED") ?? "REJECTED",
+        finalRound: (data.finalRound as number) ?? 0,
         timestamp: new Date(),
       });
     };
 
     // belief_update_pending: oracle gate deferral
-    const onDeferral = (data: any) => {
+    const onDeferral = (data: Record<string, unknown>) => {
       addEvent({
         type: "deferral",
-        agentId: data.agentId ?? "?",
-        message: data.message ?? "Belief update pending",
+        agentId: (data.agentId as string) ?? "?",
+        message: (data.message as string) ?? "Belief update pending",
         timestamp: new Date(),
       });
     };

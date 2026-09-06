@@ -94,7 +94,7 @@ export async function apiLogin(username: string, password: string): Promise<Logi
     persistSession(data.access_token, data.user);
     return data;
   } catch (error) {
-    const isDemoMode = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+    const isDemoMode = import.meta.env?.VITE_DEMO_MODE === "true";
     if (isDemoMode && !backendResponded) {
       console.warn("Backend unreachable, falling back to mock login.");
       const mockUser: AuthUser = { id: "mock-1", username: username || "Guest", email: "guest@example.com", role: "demo" };
@@ -129,7 +129,7 @@ export async function apiRegister(
     persistSession(data.access_token, data.user);
     return data;
   } catch (error) {
-    const isDemoMode = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+    const isDemoMode = import.meta.env?.VITE_DEMO_MODE === "true";
     if (isDemoMode && !backendResponded) {
       console.warn("Backend unreachable, falling back to mock registration.");
       const mockUser: AuthUser = { id: "mock-2", username: username || "New User", email, role: "demo" };

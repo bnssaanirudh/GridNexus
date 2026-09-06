@@ -5,10 +5,10 @@
   "description": "GridNexus Layer 2 – Event-driven state broker (Express, WebSocket, BullMQ)",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "npx tsc",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
-    "test": "vitest run",
+    "dev": "npx tsx watch src/index.ts",
+    "test": "npx vitest run",
     "lint": "eslint .",
     "seed": "node dist/scripts/seedOperational.js",
     "seed:dev": "tsx src/scripts/seedOperational.ts",

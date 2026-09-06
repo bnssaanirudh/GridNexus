@@ -73,7 +73,7 @@ export function createWsClient(
     socket.on(evName, (data: unknown) => {
       const ev: NegotiationEvent = {
         type: evName,
-        negotiationId: (data as any)?.negotiationId,
+        negotiationId: (data as { negotiationId?: string })?.negotiationId,
         data: data as Record<string, unknown>,
         ts: Date.now(),
       };
@@ -100,10 +100,10 @@ export function createWsClient(
 
   return {
     on<T>(event: string, handler: WsEventHandler<T>): void {
-      socket.on(event, handler as any);
+      socket.on(event, handler as (...args: unknown[]) => void);
     },
     off<T>(event: string, handler: WsEventHandler<T>): void {
-      socket.off(event, handler as any);
+      socket.off(event, handler as (...args: unknown[]) => void);
     },
     onStateChange(cb: (s: ConnectionState) => void): () => void {
       stateListeners.add(cb);

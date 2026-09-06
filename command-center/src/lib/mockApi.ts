@@ -7,20 +7,25 @@
 
 import { getToken } from "./auth";
 
+export const mockNegotiationAction = async (actionUrl: string, data?: Record<string, unknown>) => {
+  // Logic for negotiation actions would go here
+  console.log(`[Demo Mode] Action to ${actionUrl} with data:`, data);
+};
+
 const originalFetch = window.fetch;
 
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = typeof input === "string" ? input : (input as Request).url;
   
   // Only mock if we are using the demo mock token or if it's hitting our local backend ports
-  const isDemoEnv = (import.meta as any).env?.VITE_DEMO_MODE === "true";
+  const isDemoEnv = import.meta.env?.VITE_DEMO_MODE === "true";
   const isBackendCall = url.includes(":3000") || url.includes(":8000") || url.includes("/api/") || url.includes("/engine/");
   const isGuestSession = getToken() === "mock.jwt.token";
 
   if (isDemoEnv && isGuestSession && isBackendCall) {
     console.log(`[Demo Mode] Intercepted fetch to ${url}`);
     
-    let mockData: any = {};
+    let mockData: Record<string, unknown> | unknown[] = {};
 
     if (url.includes("/health") || url.includes("/ready")) {
       mockData = { status: "ok", timestamp: new Date().toISOString() };

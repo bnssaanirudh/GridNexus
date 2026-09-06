@@ -112,20 +112,20 @@ jobs:
       - name: Generate Prisma client
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
         run: npx prisma generate
 
       - name: Apply DB Migrations
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
         run: npx prisma migrate deploy
 
       - name: Run Jest tests
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+          REDIS_URL: redis://127.0.0.1:6379
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
         run: npm test
 
@@ -300,20 +300,20 @@ jobs:
       - name: Generate Prisma client
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
         run: npx prisma generate
 
       - name: Apply DB migrations
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
         run: npx prisma migrate deploy
 
       - name: Run integration test suite
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+          REDIS_URL: redis://127.0.0.1:6379
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
         run: npx vitest run tests/integration --reporter=verbose
 
@@ -366,20 +366,20 @@ jobs:
       - name: Generate Prisma client
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
         run: npx prisma generate
 
       - name: Apply DB migrations
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
         run: npx prisma migrate deploy
 
       - name: Run golden-path regression test
         working-directory: ./broker
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/gridnexus
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/gridnexus
+          REDIS_URL: redis://127.0.0.1:6379
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
         run: npx vitest run tests/integration/golden-path.test.ts --reporter=verbose
 

@@ -55,8 +55,8 @@ interface HealthPanelProps {
 const getHost = () => (typeof window !== "undefined" && window.location?.hostname ? window.location.hostname : "127.0.0.1");
 
 export function HealthPanel({
-  brokerUrl = (import.meta as Record<string, any>).env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
-  engineUrl = (import.meta as Record<string, any>).env?.VITE_ENGINE_URL ?? `http://${getHost()}:8000`,
+  brokerUrl = import.meta.env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
+  engineUrl = import.meta.env?.VITE_ENGINE_URL ?? `http://${getHost()}:8000`,
   pollIntervalMs = 5000,
 }: HealthPanelProps): JSX.Element {
   const initialStatus = (name: string, layer: string): ServiceStatus => ({

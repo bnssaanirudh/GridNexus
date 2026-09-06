@@ -49,7 +49,7 @@ interface OracleTimelineProps {
 const getHost = () => (typeof window !== "undefined" && window.location?.hostname ? window.location.hostname : "127.0.0.1");
 
 export function OracleTimeline({
-  brokerUrl = (import.meta as Record<string, any>).env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
+  brokerUrl = import.meta.env?.VITE_BROKER_URL ?? `http://${getHost()}:3000`,
   pollIntervalMs = 5000,
   limit = 20,
 }: OracleTimelineProps): JSX.Element {

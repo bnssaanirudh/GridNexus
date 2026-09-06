@@ -50,7 +50,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser } = useAuth();
-  const from = (location.state as any)?.from?.pathname ?? "/dashboard";
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? "/dashboard";
 
   const [tab, setTab] = useState<"login" | "register">("login");
   const [loading, setLoading] = useState(false);
@@ -78,8 +78,8 @@ export default function LoginPage() {
       const result = await apiLogin(loginUsername.trim(), loginPassword);
       setUser(result.user);
       navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(err.message ?? "Login failed. Please try again.");
+    } catch (err: unknown) {
+      setError((err as Error).message ?? "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -105,8 +105,8 @@ export default function LoginPage() {
       const result = await apiRegister(regUsername.trim(), regEmail.trim(), regPassword);
       setUser(result.user);
       navigate("/dashboard", { replace: true });
-    } catch (err: any) {
-      setError(err.message ?? "Registration failed. Please try again.");
+    } catch (err: unknown) {
+      setError((err as Error).message ?? "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }

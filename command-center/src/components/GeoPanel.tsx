@@ -51,7 +51,7 @@ interface GeoPanelProps {
 const getHost = () => (typeof window !== "undefined" && window.location?.hostname ? window.location.hostname : "127.0.0.1");
 
 export function GeoPanel(props: GeoPanelProps): JSX.Element {
-  const runtimeEnv = (import.meta as Record<string, any>).env;
+  const runtimeEnv = import.meta.env;
   const brokerUrl = props.brokerUrl ?? runtimeEnv?.VITE_BROKER_URL ?? `http://${getHost()}:3000`;
   const shinyUrl = props.shinyUrl ?? runtimeEnv?.VITE_SHINY_URL ?? `http://${getHost()}:3838`;
   const pollIntervalMs = props.pollIntervalMs ?? 3000;

@@ -251,21 +251,21 @@ export default function LandingPage() {
            <div className="reveal-up" style={{ borderRight: "1px solid var(--border-light)", paddingRight: "var(--space-8)" }}>
              <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)", marginBottom: "var(--space-4)" }}>VARIABLE NUMBER OF</div>
              <div className="likova-line" style={{ background: "var(--border-medium)", marginBottom: "var(--space-8)" }} />
-             <div className="likova-huge-number" ref={agentsCount.ref as any}>{agentsCount.display}</div>
+             <div className="likova-huge-number" ref={agentsCount.ref}>{agentsCount.display}</div>
              <div className="likova-heading" style={{ fontSize: "32px", marginTop: "var(--space-4)", color: "var(--fg-primary)" }}>AGENTS</div>
            </div>
            
            <div className="reveal-up" style={{ borderRight: "1px solid var(--border-light)", padding: "0 var(--space-8)" }}>
              <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)", marginBottom: "var(--space-4)" }}>SETTLEMENT LATENCY UNDER</div>
              <div className="likova-line" style={{ background: "var(--border-medium)", marginBottom: "var(--space-8)" }} />
-             <div className="likova-huge-number" ref={latencyCount.ref as any}>{latencyCount.display}</div>
+             <div className="likova-huge-number" ref={latencyCount.ref}>{latencyCount.display}</div>
              <div className="likova-heading" style={{ fontSize: "32px", marginTop: "var(--space-4)", color: "var(--fg-primary)" }}>MILLISECONDS</div>
            </div>
            
            <div className="reveal-up" style={{ paddingLeft: "var(--space-8)" }}>
              <div className="likova-heading" style={{ fontSize: "11px", color: "var(--fg-secondary)", marginBottom: "var(--space-4)" }}>LINDISTFLOW CERTIFICATION</div>
              <div className="likova-line" style={{ background: "var(--border-medium)", marginBottom: "var(--space-8)" }} />
-             <div className="likova-huge-number" ref={certCount.ref as any}>{certCount.display}</div>
+             <div className="likova-huge-number" ref={certCount.ref}>{certCount.display}</div>
              <div className="likova-heading" style={{ fontSize: "32px", marginTop: "var(--space-4)", color: "var(--fg-primary)" }}>GUARANTEE</div>
            </div>
 

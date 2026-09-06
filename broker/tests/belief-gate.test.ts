@@ -46,7 +46,13 @@ vi.mock("@prisma/client", () => {
       findFirst: vi.fn().mockResolvedValue({ id: "sig-dummy", signalData: "{}" }),
       create: vi.fn().mockResolvedValue({ id: "sig-dummy", signalData: "{}" }),
     };
-    this.agent = { findUnique: vi.fn().mockResolvedValue(null) };
+    this.agent = {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([
+        { id: "agent-free-1", microgridId: "mg-1", type: "SELLER" },
+        { id: "agent-free-2", microgridId: "mg-2", type: "BUYER" }
+      ]),
+    };
     this.stabilityCheck = {
       create: vi.fn().mockResolvedValue({ id: "sc-gate", isStable: true, margin: 5.0 }),
     };
@@ -57,6 +63,18 @@ vi.mock("@prisma/client", () => {
     this.energyTransfer = {
       create: vi.fn().mockResolvedValue({ id: "et-mock" }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    };
+    this.settlement = {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "settle-mock", status: "COMMITTED" }),
+      update: vi.fn().mockResolvedValue({ id: "settle-mock", status: "COMMITTED" }),
+    };
+    this.negotiationRound = {
+      create: vi.fn().mockResolvedValue({ id: "nr-mock" }),
+    };
+    this.auditEvent = {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "ae-mock" }),
     };
     this.$transaction = vi.fn().mockImplementation(async (cb: any) => cb(this));
     this.$disconnect = vi.fn();
@@ -71,6 +89,17 @@ vi.mock("../src/services/stabilityGate.js", () => ({
       checkId: "sc-gate",
       isStable: true,
       margin: 5.0,
+    }),
+  },
+}));
+
+vi.mock("../src/services/gridGate.js", () => ({
+  GridGate: {
+    check: vi.fn().mockResolvedValue({
+      passed: true,
+      certId: "gc-gate",
+      feasible: true,
+      losses: 0.1,
     }),
   },
 }));
@@ -138,7 +167,9 @@ describe("Belief-Update Negotiation Gate ", () => {
       socket.emit("agent_action", {
         negotiationId: data.negotiationId,
         action: "ACCEPT",
-        decision_source: "LLM"
+        decision_source: "LLM",
+        counter_offer_price: 10,
+        counter_requested_kwh: 50,
       });
     };
     
@@ -161,8 +192,7 @@ describe("Belief-Update Negotiation Gate ", () => {
     });
 
     const payload = await deferred;
-    expect(payload.agents).toContain("agent-free-1");
-    expect(payload.message).toContain("pending");
+    expect(payload.agentId).toEqual("agent-free-1");
   });
 
   it("T2: emits belief_update_pending when agentId2 has a pending belief update", async () => {
@@ -178,7 +208,7 @@ describe("Belief-Update Negotiation Gate ", () => {
     });
 
     const payload = await deferred;
-    expect(payload.agents).toContain("agent-free-2");
+    expect(payload.agentId).toEqual("agent-free-2");
   });
 
   // ── Gate test 2: Once COMPLETE, negotiation proceeds ──────────────────────
@@ -221,7 +251,7 @@ describe("Belief-Update Negotiation Gate ", () => {
       initialSurplus: 50.0,
     });
     const blocked = await firstDeferred;
-    expect(blocked.agents).toContain("agent-free-1");
+    expect(blocked.agentId).toBe("agent-free-1");
 
     // Clear the pending state (simulate belief update completing)
     pendingAgents.delete("agent-free-1");
@@ -233,7 +263,9 @@ describe("Belief-Update Negotiation Gate ", () => {
       socket.emit("agent_action", {
         negotiationId: data.negotiationId,
         action: "ACCEPT",
-        decision_source: "LLM"
+        decision_source: "LLM",
+        counter_offer_price: 10,
+        counter_requested_kwh: 50,
       });
     };
     clientSocket1.on("your_turn", (data) => handler(data, clientSocket1));

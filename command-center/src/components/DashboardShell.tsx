@@ -47,7 +47,7 @@ function useClock() {
   return time;
 }
 
-const MODE = (import.meta as any).env?.VITE_GRIDNEXUS_MODE ?? "simulation";
+const MODE = import.meta.env?.VITE_GRIDNEXUS_MODE ?? "simulation";
 
 export default function DashboardShell() {
   const navigate = useNavigate();

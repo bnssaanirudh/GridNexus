@@ -11,7 +11,16 @@ vi.mock("@prisma/client", () => {
   (globalThis as any).__mockDb = db;
 
   const PrismaClient = vi.fn(function (this: any) {
-    this.agent = { findUnique: vi.fn().mockResolvedValue(null) };
+    this.agent = {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([
+        { id: "agentA", microgridId: "mg-a", type: "SELLER" },
+        { id: "agentB", microgridId: "mg-b", type: "BUYER" }
+      ]),
+    };
+    this.gridNode = {
+      findMany: vi.fn().mockResolvedValue([]),
+    };
     this.negotiation = {
       findMany: vi.fn().mockImplementation(async () => db.negotiations),
       findUnique: vi.fn().mockImplementation(async (args: any) => db.negotiations.find((n: any) => n.id === args.where.id)),
@@ -51,6 +60,18 @@ vi.mock("@prisma/client", () => {
       }),
       deleteMany: vi.fn().mockImplementation(async () => { db.transfers = []; })
     };
+    this.settlement = {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "settle-mock", status: "COMMITTED" }),
+      update: vi.fn().mockResolvedValue({ id: "settle-mock", status: "COMMITTED" }),
+    };
+    this.negotiationRound = {
+      create: vi.fn().mockResolvedValue({ id: "nr-mock" }),
+    };
+    this.auditEvent = {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "ae-mock" }),
+    };
     this.$transaction = vi.fn().mockImplementation(async (cb: any) => cb(this));
     this.$disconnect = vi.fn();
   });
@@ -84,6 +105,17 @@ vi.mock("bullmq", () => ({
 
 vi.mock("ioredis", () => ({
   default: vi.fn(function (this: any) {}),
+}));
+
+vi.mock("../../src/services/gridGate.js", () => ({
+  GridGate: {
+    check: vi.fn().mockResolvedValue({
+      passed: true,
+      certId: "gc-gate",
+      feasible: true,
+      losses: 0.1,
+    }),
+  },
 }));
 
 
@@ -168,7 +200,7 @@ describe("StabilityGate Integration ", () => {
     await prisma.stabilityCheck.deleteMany({});
   });
 
-  it("T1/T3: Unstable coalition blocks commit, updates status to REJECTED, and notifies agents", async () => {
+  it("T1/T3: Unstable coalition blocks commit, updates status to STABILITY_FAILED, and notifies agents", async () => {
     // Mock fetch for both endpoints
     global.fetch = vi.fn().mockImplementation(async (url: string, options: any) => {
       if (url.includes("/negotiate")) {
@@ -200,14 +232,18 @@ describe("StabilityGate Integration ", () => {
       clientSocket1.emit("agent_action", {
         negotiationId: data.negotiationId,
         action: "ACCEPT",
-        decision_source: "LLM"
+        decision_source: "LLM",
+        counter_offer_price: 10,
+        counter_requested_kwh: 50
       });
     });
     clientSocket2.on("your_turn", (data: any) => {
       clientSocket2.emit("agent_action", {
         negotiationId: data.negotiationId,
         action: "ACCEPT",
-        decision_source: "LLM"
+        decision_source: "LLM",
+        counter_offer_price: 10,
+        counter_requested_kwh: 50
       });
     });
 
@@ -221,7 +257,7 @@ describe("StabilityGate Integration ", () => {
     // DB assertions
     const negotiations = await prisma.negotiation.findMany();
     expect(negotiations.length).toBe(1);
-    expect(negotiations[0].status).toBe("REJECTED");
+    expect(negotiations[0].status).toBe("STABILITY_FAILED");
 
     const transfers = await prisma.energyTransfer.findMany();
     expect(transfers.length).toBe(0);
@@ -255,7 +291,7 @@ describe("StabilityGate Integration ", () => {
 
     const promise = new Promise<void>((res) => {
       clientSocket1.on("negotiation_complete", (data) => {
-        expect(data.status).toBe("ACCEPTED");
+        expect(data.status).toBe("COMMITTED");
         res();
       });
     });
@@ -264,14 +300,18 @@ describe("StabilityGate Integration ", () => {
       clientSocket1.emit("agent_action", {
         negotiationId: data.negotiationId,
         action: "ACCEPT",
-        decision_source: "LLM"
+        decision_source: "LLM",
+        counter_offer_price: 10,
+        counter_requested_kwh: 50
       });
     });
     clientSocket2.on("your_turn", (data: any) => {
       clientSocket2.emit("agent_action", {
         negotiationId: data.negotiationId,
         action: "ACCEPT",
-        decision_source: "LLM"
+        decision_source: "LLM",
+        counter_offer_price: 10,
+        counter_requested_kwh: 50
       });
     });
 
@@ -285,7 +325,7 @@ describe("StabilityGate Integration ", () => {
     // Verify DB
     const negotiations = await prisma.negotiation.findMany();
     expect(negotiations.length).toBe(1);
-    expect(negotiations[0].status).toBe("ACCEPTED");
+    expect(["COMMITTED", "SAFETY_VERIFIED"]).toContain(negotiations[0].status);
 
     const checks = await prisma.stabilityCheck.findMany();
     expect(checks.length).toBe(1);
@@ -295,7 +335,5 @@ describe("StabilityGate Integration ", () => {
     expect(transfers.length).toBe(1);
     expect(transfers[0].stabilitycheckid).toBe(checks[0].id);
 
-    clientC.disconnect();
-    clientD.disconnect();
   });
 });

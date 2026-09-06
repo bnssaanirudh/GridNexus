@@ -63,7 +63,7 @@ export default function OraclePage() {
 
       {signals.map(sig => {
         const parsed = signalRecord(sig.signalData);
-        const isSynthetic = (parsed as any)?.synthetic === true;
+        const isSynthetic = (parsed as { synthetic?: boolean }).synthetic === true;
 
         return (
           <div key={sig.id} className="card card--pinned" style={{ marginBottom: "var(--space-4)" }}>
