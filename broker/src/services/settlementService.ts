@@ -64,13 +64,13 @@ export type SettlementResult = {
  * Transaction scope:
  * 1. Check idempotency
  * 2. Set Negotiation → PROVISIONALLY_ACCEPTED
- * 3. Create Settlement (PROVISIONAL)
+ * 3. Create Settlement (COMMITTED)
  * 4. Run verifications (external, pre-checked by caller)
  * 5. Create EnergyTransfer
  * 6. Create NegotiationRound
  * 7. Create RlReward
  * 8. Append AuditEvents (SETTLEMENT_PROVISIONAL → SETTLEMENT_COMMITTED)
- * 9. Set Negotiation → COMMITTED, Settlement → COMMITTED
+ * 9. Set Negotiation → COMMITTED
  */
 export async function commitSettlement(input: SettlementInput): Promise<SettlementResult> {
   return prisma.$transaction(async (tx) => {
@@ -89,7 +89,7 @@ export async function commitSettlement(input: SettlementInput): Promise<Settleme
       data: { status: "PROVISIONALLY_ACCEPTED" },
     });
 
-    // ── 3. Create Settlement (PROVISIONAL) ──────────────────────────────
+    // ── 3. Create Settlement (COMMITTED, settlements are append-only) ───
     const settlement = await tx.settlement.create({
       data: {
         idempotencyKey: input.idempotencyKey,
@@ -101,7 +101,7 @@ export async function commitSettlement(input: SettlementInput): Promise<Settleme
         currency: input.currency ?? "USD",
         deliveryStart: input.deliveryStart,
         deliveryEnd: input.deliveryEnd,
-        status: "PROVISIONAL",
+        status: "COMMITTED",
         stabilityCheckId: input.stabilityCheckId,
         gridCertificateId: input.gridCertificateId,
       },
@@ -173,11 +173,7 @@ export async function commitSettlement(input: SettlementInput): Promise<Settleme
       });
     }
 
-    // ── 8. Commit settlement + negotiation ───────────────────────────────
-    await tx.settlement.update({
-      where: { id: settlement.id },
-      data: { status: "COMMITTED" },
-    });
+    // ── 8. Commit negotiation (settlement row is append-only) ────────────
     await tx.negotiation.update({
       where: { id: input.negotiationId },
       data: { status: "COMMITTED" },
