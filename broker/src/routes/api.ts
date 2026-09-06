@@ -3,6 +3,7 @@ import { Role } from "../middleware/rbac.js";
 import { requireAuth } from "../middleware/auth.js";
 import { isProduction } from "../config.js";
 import { prisma } from "../db/prisma.js";
+import { onboardingRouter } from "./onboarding.js";
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
@@ -25,6 +26,8 @@ const operationalAccess = isProduction()
 
 export const apiRouter = Router();
 apiRouter.use(operationalAccess);
+
+apiRouter.use("/onboarding", onboardingRouter);
 
 apiRouter.get("/oracle/signals", asyncRoute(async (req, res) => {
   const signals = await prisma.oracleSignal.findMany({

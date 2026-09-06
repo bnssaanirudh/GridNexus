@@ -122,6 +122,24 @@ class UserMicrogridMembership(Base):
     microgrid = relationship("Microgrid", back_populates="memberships")
 
 
+class UserOnboarding(Base):
+    __tablename__ = "user_onboarding"
+
+    id = Column(String, primary_key=True)
+    userId = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    status = Column(String(50), nullable=False, default="REGISTERED")
+    siteName = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    derType = Column(String, nullable=True)
+    hiddenCapacity = Column(String, nullable=True)
+    hiddenBattery = Column(String, nullable=True)
+    hiddenGenCost = Column(String, nullable=True)
+    createdAt = Column(DateTime(timezone=True), server_default=func.now())
+    updatedAt = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="onboarding")
+
+
 class User(Base):
     """Platform user for JWT authentication and RBAC."""
     __tablename__ = "users"
@@ -137,3 +155,4 @@ class User(Base):
     microgridId  = Column(String, nullable=True)
 
     memberships  = relationship("UserMicrogridMembership", back_populates="user", cascade="all, delete-orphan")
+    onboarding   = relationship("UserOnboarding", back_populates="user", uselist=False, cascade="all, delete-orphan")

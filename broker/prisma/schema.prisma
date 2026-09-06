@@ -376,6 +376,7 @@ model User {
   updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
 
   memberships  UserMicrogridMembership[]
+  onboarding   UserOnboarding?
 
   @@index([email])
   @@index([username])
@@ -397,6 +398,29 @@ model UserMicrogridMembership {
   @@index([userId])
   @@index([microgridId])
   @@map("user_microgrid_memberships")
+}
+
+model UserOnboarding {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  status          String    @default("REGISTERED") // REGISTERED | PROFILE_INCOMPLETE | PENDING_VERIFICATION | APPROVED | MICROGRID_PROVISIONED | AGENT_PROVISIONED | ACTIVE | REJECTED | SUSPENDED
+  
+  // Public site information
+  siteName        String?
+  location        String?
+  derType         String?
+  
+  // Private operational information (stored encrypted)
+  hiddenCapacity  String?
+  hiddenBattery   String?
+  hiddenGenCost   String?
+
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_onboarding")
 }
 
 // -- Settlement Lifecycle -------------------------------------------------
