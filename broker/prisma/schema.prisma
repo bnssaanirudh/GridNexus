@@ -420,6 +420,11 @@ model UserOnboarding {
   reviewedAt      DateTime? @db.Timestamptz(6)
   reason          String?
 
+  // Provisioned resource links
+  microgridId     String?
+  agentId         String?
+  derId           String?
+
   createdAt       DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
   

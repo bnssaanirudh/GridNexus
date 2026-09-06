@@ -11,6 +11,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../db/prisma.js";
 import { decrypt } from "../db/encryption.js";
 import { appendAuditEvent } from "../services/auditChain.js";
+import { provisionOnboarding } from "../services/provisioningService.js";
 
 export const adminOnboardingRouter = Router();
 
@@ -433,3 +434,51 @@ adminOnboardingRouter.post(
     }
   }
 );
+
+/**
+ * POST /api/admin/onboarding/:id/provision
+ * Triggers transactional provisioning of Microgrid, DER, Agent, BusMapping, and Membership.
+ * Only ADMIN and GRID_OPERATOR may trigger provisioning.
+ */
+adminOnboardingRouter.post(
+  "/:id/provision",
+  requireAuth([Role.ADMIN, Role.GRID_OPERATOR]),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const actorId = req.user?.userId;
+      if (!actorId) {
+        res.status(401).json({ error: "UNAUTHORIZED" });
+        return;
+      }
+
+      const { busId, phase, agentType } = req.body || {};
+
+      const result = await provisionOnboarding({
+        onboardingId: req.params.id,
+        actorId,
+        busId,
+        phase,
+        agentType,
+      });
+
+      res.status(200).json({
+        message: result.alreadyProvisioned
+          ? "Application is already provisioned."
+          : "Application provisioned successfully.",
+        status: result.status,
+        provisioning: {
+          microgridId: result.microgridId,
+          derId: result.derId,
+          agentId: result.agentId,
+          busId: result.busId,
+        },
+      });
+    } catch (error: any) {
+      console.error("[AdminOnboarding] Provisioning failed:", error);
+      const status = error.statusCode || 500;
+      const code = error.errorCode || "INTERNAL_SERVER_ERROR";
+      res.status(status).json({ error: code, message: error.message });
+    }
+  }
+);
+
