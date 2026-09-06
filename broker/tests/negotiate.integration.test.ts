@@ -60,11 +60,12 @@ describe("WebSocket Negotiation Integration", () => {
       clientSocket.removeAllListeners();
     }
     // Clean DB for clean tests (FK order: energytransfers before microgrids)
-    await prisma.$executeRawUnsafe(`DELETE FROM "energytransfers"`);
-    await prisma.$executeRawUnsafe(`DELETE FROM "beliefupdates"`);
-    await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
+    await prisma.energyTransfer.deleteMany({});
+    await prisma.beliefUpdate.deleteMany({});
+    await prisma.rlReward.deleteMany({});
     await prisma.integritySnapshot.deleteMany({});
     await prisma.reconciliation.deleteMany({});
+    await prisma.negotiationRound.deleteMany({});
     await prisma.negotiation.deleteMany({});
     await prisma.agent.deleteMany({});
     await prisma.stabilityCheck.deleteMany({});

@@ -217,15 +217,16 @@ describe("Golden-Path: Oracle → Belief → Stability → Trade ", () => {
     clientSocket?.disconnect();
     // Cleanup in FK-safe order using raw SQL to bypass any append-only triggers
     try {
-      await prisma.$executeRawUnsafe(`DELETE FROM "energytransfers"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "beliefupdates"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "integrity_snapshots"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "reconciliations"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "negotiations"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "stabilitychecks"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "agents"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "microgrids"`);
+      await prisma.energyTransfer.deleteMany({});
+      await prisma.rlReward.deleteMany({});
+      await prisma.beliefUpdate.deleteMany({});
+      await prisma.integritySnapshot.deleteMany({});
+      await prisma.reconciliation.deleteMany({});
+      await prisma.negotiationRound.deleteMany({});
+      await prisma.negotiation.deleteMany({});
+      await prisma.stabilityCheck.deleteMany({});
+      await prisma.agent.deleteMany({});
+      await prisma.microgrid.deleteMany({});
     } catch (_) { /* ignore if DB is offline */ }
     await prisma.$disconnect();
   });

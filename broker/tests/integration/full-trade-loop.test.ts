@@ -109,9 +109,10 @@ describe("Full Trade-Loop Integration", () => {
     vi.restoreAllMocks();
     clientSocket.removeAllListeners();
     // Purge rows created during the test (FK order matters; use raw SQL to bypass any append-only trigger)
-    await prisma.$executeRawUnsafe(`DELETE FROM "energytransfers"`);
-    await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
-    await prisma.$executeRawUnsafe(`DELETE FROM "beliefupdates"`);
+    await prisma.energyTransfer.deleteMany({});
+    await prisma.rlReward.deleteMany({});
+    await prisma.beliefUpdate.deleteMany({});
+    await prisma.negotiationRound.deleteMany({});
     await prisma.negotiation.deleteMany({});
     await prisma.stabilityCheck.deleteMany({});
 

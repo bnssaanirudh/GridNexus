@@ -59,9 +59,10 @@ describe("Full Trade-Loop Failure Injection", () => {
   afterAll(async () => {
     // cleanup – FK order matters; raw SQL bypasses any append-only triggers
     try {
-      await prisma.$executeRawUnsafe(`DELETE FROM "energytransfers"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
-      await prisma.$executeRawUnsafe(`DELETE FROM "beliefupdates"`);
+      await prisma.energyTransfer.deleteMany({});
+      await prisma.rlReward.deleteMany({});
+      await prisma.beliefUpdate.deleteMany({});
+      await prisma.negotiationRound.deleteMany({});
       await prisma.negotiation.deleteMany({});
       await prisma.stabilityCheck.deleteMany({});
       await prisma.agent.deleteMany({});
@@ -72,9 +73,9 @@ describe("Full Trade-Loop Failure Injection", () => {
 
   beforeEach(async () => {
     // Purge any rows written by a previous test run in this suite
-    await prisma.$executeRawUnsafe(`DELETE FROM "energytransfers"`);
-    await prisma.$executeRawUnsafe(`DELETE FROM "rlrewards"`);
-    await prisma.$executeRawUnsafe(`DELETE FROM "negotiationrounds" WHERE "negotiationId" = '${negotiation.id}'`);
+    await prisma.energyTransfer.deleteMany({});
+    await prisma.rlReward.deleteMany({});
+    await prisma.negotiationRound.deleteMany({ where: { negotiationId: negotiation.id } });
   });
 
   it("rolls back entirely when the EnergyTransfer has an invalid microgrid FK", async () => {
