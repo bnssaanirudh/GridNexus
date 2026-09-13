@@ -1,0 +1,3 @@
+Model,Is_Stable,Epsilon_Star,Solve_Time_ms,V_S
+Additive (Legacy),True,-0.0,32.42820000741631,34.0
+VPP Non-Additive (New),True,-0.75,14.236799965146929,1094.5

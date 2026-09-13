@@ -1,0 +1,8 @@
+Misreported_Cost,Reported_Surplus_Allocated,True_Utility,Manipulation_Gain,Is_Stable
+1.0,58.0,8.0,-50.0,True
+1.5,58.0,33.0,-25.0,True
+2.0,58.0,58.0,0.0,True
+2.5,58.0,83.0,25.0,True
+3.0,58.0,108.0,50.0,True
+3.5,58.0,133.0,75.0,True
+4.0,58.0,158.0,100.0,True
