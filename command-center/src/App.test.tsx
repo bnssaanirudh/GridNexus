@@ -44,15 +44,19 @@ describe("App routed command center", () => {
     } as Response);
   });
 
-  it("renders the GridNexus brand and authenticated dashboard", () => {
+  it("renders the GridNexus brand and authenticated dashboard", async () => {
     render(<App />);
-    expect(screen.getByRole("link", { name: /GridNexus Home/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /GridNexus Home/i })).toBeInTheDocument();
+    });
   });
 
-  it("renders the persisted overview and navigation", () => {
+  it("renders the persisted overview and navigation", async () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: /System Overview/i })).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: /Dashboard navigation/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /System Overview/i })).toBeInTheDocument();
+      expect(screen.getByRole("navigation", { name: /Dashboard navigation/i })).toBeInTheDocument();
+    });
   });
 
   it("opens the detailed workflow route", async () => {

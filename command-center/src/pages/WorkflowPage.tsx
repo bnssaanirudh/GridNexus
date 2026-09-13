@@ -174,7 +174,7 @@ export default function WorkflowPage() {
   const [cycle, setCycle] = useState(1);
   const [recentEvents, setRecentEvents] = useState<string[]>(["Simulation clock synchronised"]);
   const step = STEPS[stepIndex];
-  const activeModels = STEP_MODELS[stepIndex] ?? [];
+  const activeModels = useMemo(() => STEP_MODELS[stepIndex] ?? [], [stepIndex]);
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const phase = PHASES[step.phase];
