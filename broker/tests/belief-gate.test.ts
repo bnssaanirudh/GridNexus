@@ -67,7 +67,7 @@ vi.mock("@prisma/client", () => {
     this.settlement = {
       findUnique: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: "settle-mock", status: "COMMITTED" }),
-      update: vi.fn().mockResolvedValue({ id: "settle-mock", status: "COMMITTED" }),
+      update: vi.fn().mockRejectedValue(new Error("Table settlements is append-only. UPDATE and DELETE are restricted.")),
     };
     this.negotiationRound = {
       create: vi.fn().mockResolvedValue({ id: "nr-mock" }),
