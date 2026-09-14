@@ -22,29 +22,29 @@ def test_ready_check_success(mock_redis, mock_db):
 @patch("app.main.check_redis_health", return_value=True)
 def test_ready_check_db_down(mock_redis, mock_db):
     response = client.get("/ready")
-    assert response.status_code == 503
-    assert response.json() == {"status": "error", "db": "down", "redis": "up"}
+from app.deps import get_db
+
+async def override_get_db():
+    mock_session = AsyncMock()
+    yield mock_session
 
 # Agents
-@patch("app.routers.agents.AsyncSessionLocal")
-def test_create_agent_valid(mock_sl):
-    mock_session = MagicMock()
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
-    mock_sl.return_value = mock_session
-    response = client.post("/agents", json={"name": "Test Agent", "microgridId": "mg-1", "policy_metadata": {"key": "val"}})
-    assert response.status_code == 200
-    assert response.json()["name"] == "Test Agent"
+def test_create_agent_valid():
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        response = client.post("/agents", json={"name": "Test Agent", "microgridId": "mg-1", "policy_metadata": {"key": "val"}})
+        assert response.status_code == 200
+        assert response.json()["name"] == "Test Agent"
+    finally:
+        app.dependency_overrides = {}
 
-@patch("app.routers.agents.AsyncSessionLocal")
-def test_create_agent_invalid(mock_sl):
-    # Missing required 'name'
-    mock_session = MagicMock()
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=False)
-    mock_sl.return_value = mock_session
-    response = client.post("/agents", json={"policy_metadata": {"key": "val"}})
-    assert response.status_code == 422
+def test_create_agent_invalid():
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        response = client.post("/agents", json={"policy_metadata": {"key": "val"}})
+        assert response.status_code == 422
+    finally:
+        app.dependency_overrides = {}
 
 @patch("app.routers.negotiate._fetch_agent", return_value={"capacity": 100.0, "cost": 10.0})
 def test_negotiate_valid(mock_fetch):

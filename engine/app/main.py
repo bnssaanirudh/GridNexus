@@ -4,7 +4,7 @@ import os
 
 from app.deps import check_db_health, check_redis_health
 from app.logging_middleware import RequestIdMiddleware, logger
-from app.routers import agents, auth, data_sources, grid, metrics, negotiate, oracle, qre, stability
+from app.routers import agents, auth, data_sources, grid, metrics, negotiate, oracle, qre, stability, settlement
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -42,6 +42,7 @@ app.include_router(metrics.router)
 app.include_router(grid.router)
 app.include_router(auth.router)
 app.include_router(data_sources.router)
+app.include_router(settlement.router)
 
 class HealthResponse(BaseModel):
     status: str

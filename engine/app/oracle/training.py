@@ -227,7 +227,7 @@ def train_oracle(
                 )
             except Exception:
                 # Degenerate coalitions can raise; treat as unstable with margin -1
-                stab_result = StabilityResult(is_stable=False, margin=-1.0)
+                stab_result = StabilityResult(status="BLOCKING_COALITION_FOUND", margin=-1.0)
 
             # Build agent outcomes
             outcomes = _build_synthetic_outcomes(state, state_after, cfg.n_agents, rng)

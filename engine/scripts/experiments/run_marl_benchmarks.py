@@ -31,6 +31,12 @@ def run_benchmarks(num_seeds=10):
         mappo_trainer.train()
         mappo_trainer.save(Path(mappo_cfg.artifact_dir))
 
+        # CS-SafeMAPPO
+        cs_mappo_cfg = MAPPOConfig(n_episodes=50, seed=seed, artifact_dir=str(output_dir / "cs_safemappo" / f"seed_{seed}"), safe_mode=True)
+        cs_mappo_trainer = MAPPOTrainer(cs_mappo_cfg)
+        cs_mappo_trainer.train()
+        cs_mappo_trainer.save(Path(cs_mappo_cfg.artifact_dir))
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, default=10, help="Number of seeds to evaluate")

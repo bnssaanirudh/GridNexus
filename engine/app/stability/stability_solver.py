@@ -66,6 +66,16 @@ class StabilityResult:
     converged: bool = True
     solve_time_ms: float = 0.0
 
+    @property
+    def is_stable(self) -> bool:
+        """Backward-compatible property. True iff status == EXACT_STABLE.
+
+        Callers should prefer checking `status` directly for full semantics
+        (EXACT_STABLE vs HEURISTIC_NO_VIOLATION_FOUND vs BLOCKING_COALITION_FOUND).
+        This property is preserved for test/API compatibility.
+        """
+        return self.status == "EXACT_STABLE"
+
 
 def verify_stability(
     coalition: list[Any],

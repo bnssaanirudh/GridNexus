@@ -195,3 +195,27 @@ def generate_certificate(
         "inputHash": input_hash,
         "resultHash": result_hash,
     }
+
+def validate_certificate_state(
+    cert_input_hash: str,
+    cert_telemetry_timestamp: datetime,
+    current_network: ElectricalNetwork,
+    current_topology_version: int,
+    max_telemetry_age_seconds: int = 60
+) -> Tuple[bool, str]:
+    """
+    Validates a dual-certificate against the current physical state.
+    Prompts 21 & 22: Topology / telemetry invalidation.
+    """
+    # 1. Telemetry freshness check
+    age_seconds = (datetime.now(cert_telemetry_timestamp.tzinfo) - cert_telemetry_timestamp).total_seconds()
+    if age_seconds > max_telemetry_age_seconds:
+        return False, f"Certificate invalidated: telemetry age {age_seconds:.1f}s exceeds limit {max_telemetry_age_seconds}s"
+        
+    # 2. Topology and physical limits mismatch check
+    current_hash = _canonical_network_hash(current_network, current_topology_version)
+    if cert_input_hash != current_hash:
+        return False, "Certificate invalidated: physical topology or constraints have changed since certification"
+        
+    return True, "Valid"
+

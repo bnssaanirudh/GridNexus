@@ -181,3 +181,26 @@ class TradingPreference(Base):
     updatedAt = Column(DateTime(timezone=True), onupdate=func.now())
 
     microgrid = relationship("Microgrid", back_populates="tradingPreference")
+
+class DispatchCertificate(Base):
+    __tablename__ = "dispatch_certificates"
+
+    id = Column(String, primary_key=True)
+    trade_id = Column(String, nullable=False, unique=True, index=True)
+    topology_hash = Column(String, nullable=False)
+    telemetry_timestamp = Column(DateTime(timezone=True), nullable=False)
+    
+    proposed_quantity_kwh = Column(Numeric(10, 4), nullable=False)
+    corrected_quantity_kwh = Column(Numeric(10, 4), nullable=True)
+    
+    seller_id = Column(String, nullable=False)
+    buyer_id = Column(String, nullable=False)
+    
+    physical_margins = Column(JSON, nullable=True)
+    solver_used = Column(String(50), nullable=False)
+    
+    integrity_hash = Column(String, nullable=False)
+    is_valid = Column(Boolean, default=True, nullable=False)
+    
+    createdAt = Column(DateTime(timezone=True), server_default=func.now())
+    updatedAt = Column(DateTime(timezone=True), onupdate=func.now())

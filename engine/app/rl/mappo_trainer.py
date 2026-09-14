@@ -61,6 +61,8 @@ class MAPPOConfig:
     hidden_dim: int = 64
     seed: int = 42
     artifact_dir: str = "artifacts/mappo"
+    safe_mode: bool = False
+    cost_limit: float = 0.1
 
 
 # ─── Neural networks ──────────────────────────────────────────────────────────
@@ -114,6 +116,7 @@ class RolloutBuffer:
     actions: list[dict[str, int]] = field(default_factory=list)
     log_probs: list[dict[str, float]] = field(default_factory=list)
     rewards: list[dict[str, float]] = field(default_factory=list)
+    costs: list[dict[str, float]] = field(default_factory=list)
     dones: list[bool] = field(default_factory=list)
     global_obs: list[np.ndarray] = field(default_factory=list)
 
@@ -122,6 +125,7 @@ class RolloutBuffer:
         self.actions.clear()
         self.log_probs.clear()
         self.rewards.clear()
+        self.costs.clear()
         self.dones.clear()
         self.global_obs.clear()
 
@@ -170,6 +174,15 @@ class MAPPOTrainer:
         self.critic_optim = torch.optim.Adam(
             self.critic.parameters(), lr=cfg.lr_critic
         )
+
+        if self.cfg.safe_mode:
+            self.cost_critic = CentralCritic(global_obs_dim, cfg.hidden_dim)
+            self.cost_critic_optim = torch.optim.Adam(
+                self.cost_critic.parameters(), lr=cfg.lr_critic
+            )
+            # Lagrangian multipliers (one per agent for distributed safety, or global)
+            self.lagrangian = {ag: 0.0 for ag in agents}
+            self.lr_lag = 0.05
 
         self.buffer = RolloutBuffer()
         self.metrics: list[dict[str, float]] = []
@@ -237,6 +250,14 @@ class MAPPOTrainer:
             # Record coalition metrics from first agent's info
             first_info = next(iter(infos.values()), {})
             coalition_sizes.append(float(first_info.get("coalition_size", 0)))
+            
+            # Extract costs if safe_mode is active
+            costs = {}
+            for ag, inf in infos.items():
+                costs[ag] = inf.get("physical_cost", 0.0) + inf.get("stability_cost", 0.0)
+                if self.cfg.safe_mode:
+                    # In safe mode, we decouple the penalty from the reward
+                    rewards[ag] += costs[ag] # undo the penalty applied in env
 
             done = all(terminations.values())
 
@@ -244,6 +265,7 @@ class MAPPOTrainer:
             self.buffer.actions.append(actions)
             self.buffer.log_probs.append(log_probs)
             self.buffer.rewards.append(rewards)
+            self.buffer.costs.append(costs)
             self.buffer.dones.append(done)
             self.buffer.global_obs.append(global_obs)
 
@@ -275,11 +297,17 @@ class MAPPOTrainer:
         # Bootstrap value at episode end = 0 (terminal)
         advantages: dict[str, list[float]] = {ag: [] for ag in agents}
         returns: dict[str, list[float]] = {ag: [] for ag in agents}
+        
+        cost_advantages: dict[str, list[float]] = {ag: [] for ag in agents}
+        cost_returns: dict[str, list[float]] = {ag: [] for ag in agents}
 
         for ag in agents:
             gae = 0.0
+            c_gae = 0.0
             ag_adv: list[float] = []
             ag_ret: list[float] = []
+            ag_c_adv: list[float] = []
+            ag_c_ret: list[float] = []
 
             # Use centralised critic for value estimates
             global_obs_tensors = torch.FloatTensor(
@@ -287,11 +315,18 @@ class MAPPOTrainer:
             )
             with torch.no_grad():
                 values = self.critic(global_obs_tensors).numpy()
+                if self.cfg.safe_mode:
+                    cost_values = self.cost_critic(global_obs_tensors).numpy()
+                else:
+                    cost_values = np.zeros_like(values)
 
             next_value = 0.0
+            next_cost_value = 0.0
             for t in reversed(range(T)):
                 reward = buf.rewards[t].get(ag, 0.0)
+                cost = buf.costs[t].get(ag, 0.0) if self.cfg.safe_mode else 0.0
                 done = buf.dones[t]
+                
                 value = float(values[t])
                 next_val = next_value if not done else 0.0
                 delta = reward + self.cfg.gamma * next_val - value
@@ -299,9 +334,21 @@ class MAPPOTrainer:
                 ag_adv.insert(0, gae)
                 ag_ret.insert(0, gae + value)
                 next_value = value
+                
+                if self.cfg.safe_mode:
+                    c_val = float(cost_values[t])
+                    c_next_val = next_cost_value if not done else 0.0
+                    c_delta = cost + self.cfg.gamma * c_next_val - c_val
+                    c_gae = c_delta + self.cfg.gamma * self.cfg.gae_lambda * (0 if done else c_gae)
+                    ag_c_adv.insert(0, c_gae)
+                    ag_c_ret.insert(0, c_gae + c_val)
+                    next_cost_value = c_val
 
             advantages[ag] = ag_adv
             returns[ag] = ag_ret
+            if self.cfg.safe_mode:
+                cost_advantages[ag] = ag_c_adv
+                cost_returns[ag] = ag_c_ret
 
         # ── Flatten data for minibatch updates ─────────────────────────────
         all_obs: dict[str, torch.Tensor] = {}
@@ -309,6 +356,8 @@ class MAPPOTrainer:
         all_old_lp: dict[str, torch.Tensor] = {}
         all_adv: dict[str, torch.Tensor] = {}
         all_ret: dict[str, torch.Tensor] = {}
+        all_c_adv: dict[str, torch.Tensor] = {}
+        all_c_ret: dict[str, torch.Tensor] = {}
 
         for ag in agents:
             all_obs[ag] = torch.FloatTensor(
@@ -322,6 +371,14 @@ class MAPPOTrainer:
                 [buf.log_probs[t].get(ag, 0.0) for t in range(T)]
             )
             adv_t = torch.FloatTensor(advantages[ag])
+            
+            if self.cfg.safe_mode:
+                c_adv_t = torch.FloatTensor(cost_advantages[ag])
+                all_c_adv[ag] = c_adv_t
+                all_c_ret[ag] = torch.FloatTensor(cost_returns[ag])
+                # Lagrangian penalisation of advantage
+                adv_t = adv_t - self.lagrangian[ag] * c_adv_t
+            
             # Normalise advantages per-agent
             adv_t = (adv_t - adv_t.mean()) / (adv_t.std() + 1e-8)
             all_adv[ag] = adv_t
@@ -354,6 +411,18 @@ class MAPPOTrainer:
                 (self.cfg.value_coef * value_loss).backward()
                 nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
                 self.critic_optim.step()
+                
+                if self.cfg.safe_mode:
+                    mb_c_ret_mean = torch.stack(
+                        [all_c_ret[ag][mb_t] for ag in agents]
+                    ).mean(dim=0)
+                    pred_c_values = self.cost_critic(mb_global)
+                    c_value_loss = F.mse_loss(pred_c_values, mb_c_ret_mean)
+                    
+                    self.cost_critic_optim.zero_grad()
+                    (self.cfg.value_coef * c_value_loss).backward()
+                    nn.utils.clip_grad_norm_(self.cost_critic.parameters(), 0.5)
+                    self.cost_critic_optim.step()
 
                 # ── Actor updates (per-agent) ──────────────────────────────
                 ep_policy_loss = 0.0
@@ -385,6 +454,12 @@ class MAPPOTrainer:
 
         avg_pl = total_policy_loss / max(n_updates, 1)
         avg_vl = total_value_loss / max(n_updates, 1)
+        
+        if self.cfg.safe_mode:
+            for ag in agents:
+                mean_cost = sum([buf.costs[t].get(ag, 0.0) for t in range(T)]) / T
+                self.lagrangian[ag] = max(0.0, self.lagrangian[ag] + self.lr_lag * (mean_cost - self.cfg.cost_limit))
+                
         return avg_pl, avg_vl
 
     # ── Persistence ───────────────────────────────────────────────────────────

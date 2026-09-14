@@ -37,6 +37,9 @@ class StabilityVerifyResponse(BaseModel):
     status: Literal["EXACT_STABLE", "BLOCKING_COALITION_FOUND", "HEURISTIC_NO_VIOLATION_FOUND", "UNVERIFIED"] = Field(
         ..., description="Verification result status"
     )
+    isStable: bool = Field(
+        ..., description="True iff status==EXACT_STABLE. Preserved for API compatibility."
+    )
     epsilonStar: float = Field(..., description="Least-core epsilon value")
     allocation: dict[str, float] = Field(..., description="Allocation of surplus to agents")
     margin: float = Field(..., description="Min slack across all permissible deviating coalitions")

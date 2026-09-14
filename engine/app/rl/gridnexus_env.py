@@ -222,12 +222,16 @@ class GridNexusEnv(ParallelEnv):
 
         # ── 3. Compute rewards ────────────────────────────────────────────
         rewards: dict[str, float] = {}
+        physical_costs: dict[str, float] = {}
+        stability_costs: dict[str, float] = {}
         for ag in self.agents:
             action = int(actions.get(ag, 1))
-            reward = self._shaped_reward(
+            reward, p_cost, s_cost = self._shaped_reward(
                 ag, action, coalition_formed, coalition_size
             )
             rewards[ag] = reward
+            physical_costs[ag] = p_cost
+            stability_costs[ag] = s_cost
 
         # ── 4. Termination ────────────────────────────────────────────────
         done = self._step >= self.max_steps
@@ -246,6 +250,8 @@ class GridNexusEnv(ParallelEnv):
                 "coalition_formed": coalition_formed,
                 "coalition_size": coalition_size,
                 "action": int(actions.get(ag, 1)),
+                "physical_cost": physical_costs.get(ag, 0.0),
+                "stability_cost": stability_costs.get(ag, 0.0),
             }
             for ag in obs
         }
@@ -259,7 +265,7 @@ class GridNexusEnv(ParallelEnv):
         action: int,
         coalition_formed: bool,
         coalition_size: int,
-    ) -> float:
+    ) -> tuple[float, float, float]:
         """
         Utility-driven reward shaping:
         - Trade surplus: reward for ACCEPT relative to own surplus and cost.
@@ -286,7 +292,14 @@ class GridNexusEnv(ParallelEnv):
             if action == 2: # WALK_AWAY
                 self._trade_rejections[agent] += 1
 
-        return float(trade_surplus - switching_cost - blocking_penalty)
+        # Simulate physical safety cost (e.g. overvoltage/thermal limit risk)
+        physical_cost = 0.2 if (action == 0 and self._oracle_signal > 0.7) else 0.0
+        
+        # Simulate coalition instability cost (e.g. epsilon-core excess)
+        stability_cost = blocking_penalty
+
+        reward = float(trade_surplus - switching_cost - physical_cost - stability_cost)
+        return reward, physical_cost, stability_cost
 
     def _observe(self, agent: str) -> np.ndarray:
         """Construct the observation vector for *agent*."""
