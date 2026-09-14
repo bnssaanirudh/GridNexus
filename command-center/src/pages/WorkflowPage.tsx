@@ -50,12 +50,12 @@ const STEPS: MicroStep[] = [
   { phase: 4, title: "An immutable receipt closes the cycle", detail: "The audit ledger commits the receipt and broadcasts the final state to the command center.", from: "LEDGER", to: "UI", message: "BLOCK 08F2 · FINAL", protocol: "receipt broadcast", camera: { x: 1100, y: 585, zoom: 1.65 } },
 ];
 const STEP_MODELS: Record<number, string[]> = {
-  0: ["LSTM"],
-  1: ["LSTM"],
-  2: ["LSTM", "RAG"],
+  0: [],
+  1: [],
+  2: ["RAG"],
   3: ["RAG", "ORACLE_POLICY"],
-  4: ["MAPPO", "FEDAVG"],
-  5: ["MAPPO", "FEDAVG"],
+  4: ["MAPPO"],
+  5: ["MAPPO"],
   6: ["MAPPO", "DQN"],
   7: ["MAPPO", "DQN"],
   8: ["LLM", "TEMP", "DQN"],
@@ -85,11 +85,9 @@ function createTopology(): TopologyNode[] {
     { id: "SOLVER", label: "Grid Solver", x: 1080, y: 325, kind: "solver" },
     { id: "LEDGER", label: "Audit Ledger", x: 1080, y: 495, kind: "ledger" },
     { id: "UI", label: "Command Center", x: 1080, y: 665, kind: "interface" },
-    { id: "LSTM", label: "LSTM Forecast", x: 300, y: 90, kind: "service" },
     { id: "RAG", label: "RAG Oracle", x: 400, y: 55, kind: "service" },
     { id: "ORACLE_POLICY", label: "MAPPO Oracle", x: 475, y: 175, kind: "service" },
-    { id: "MAPPO", label: "FedMAPPO Actor", x: 350, y: 210, kind: "service" },
-    { id: "FEDAVG", label: "FedAvg", x: 430, y: 210, kind: "service" },
+    { id: "MAPPO", label: "MAPPO Actor", x: 350, y: 210, kind: "service" },
     { id: "LLM", label: "LLM Negotiator", x: 510, y: 210, kind: "service" },
     { id: "TEMP", label: "Temp Policy", x: 590, y: 210, kind: "service" },
     { id: "DQN", label: "DQN Safety Gate", x: 670, y: 210, kind: "service" },
@@ -135,11 +133,9 @@ function getPublicNodeInfo(node: TopologyNode): PublicNodeInfo {
   }
   const descriptions: Record<string, [string, string, string]> = {
     OPSD: ["Public dataset", "Healthy · 15 min cadence", "Household electricity profiles used to drive demand scenarios."], TMY: ["Public weather dataset", "Healthy · hourly source", "India spectral typical-meteorological-year irradiance source."], GATEWAY: ["Data service", "Online · schema v3", "Validates, timestamps and normalises every external observation."], ORACLE: ["Trusted oracle", "Online · signature valid", "Produces the signed market-state forecast shared by all agents."], BUS: ["Message infrastructure", "Online · 72 subscribers", "Distributes state and control messages without coupling services."], BROKER: ["Market service", "Clearing round active", "Coordinates bids, counteroffers and certified settlement instructions."], CLEARER: ["Optimisation service", "Solver ready", "Builds welfare-maximising coalitions under market constraints."], TOPOLOGY: ["Grid model", "72 buses synchronised", "Public operational abstraction of feeders, limits and bus connectivity."], SOLVER: ["Safety service", "Certificate authority online", "Rejects or repairs trades that violate physical network constraints."], LEDGER: ["Audit service", "Block integrity verified", "Stores settlement receipts and proof references without raw telemetry."], UI: ["Public interface", "Live · read-only view", "Presents public system state, topology and audit events."],
-    LSTM: ["Forecasting model", "PyTorch model available", "LSTM load forecaster for time-series demand prediction."],
     RAG: ["Oracle intelligence", "Context pipeline ready", "RAG-assisted weather and exogenous-stress interpretation."],
     ORACLE_POLICY: ["Oracle policy", "MAPPO actor loaded", "MAPPO-derived policy that selects the oracle broadcast action."],
-    MAPPO: ["Multi-agent RL", "Actor policy active", "FedMAPPO actors choose ACCEPT, COUNTER, WALK_AWAY, JOIN or LEAVE."],
-    FEDAVG: ["Federated learning", "Privacy mask enabled", "Federated averaging synchronises local actor weights without sharing private curves."],
+    MAPPO: ["Multi-agent RL", "Actor policy active", "MAPPO actors choose ACCEPT, COUNTER, WALK_AWAY, JOIN or LEAVE."],
     LLM: ["Generative negotiator", "LangChain provider guarded", "LLM proposes structured negotiation actions from sanitised public context."],
     TEMP: ["Exploration policy", "Dynamic temperature active", "Adjusts LLM exploration and exploitation during negotiation rounds."],
     DQN: ["RL safety gate", "PyTorch Q-network ready", "DQN scores and overrides unsafe or low-value LLM negotiation actions."],
@@ -231,7 +227,7 @@ export default function WorkflowPage() {
       topology.filter((node) => node.kind !== "agent").forEach((node) => { context.save(); context.fillStyle = "rgba(41,67,57,.88)"; context.strokeStyle = `${nodeColor[node.kind]}66`; context.lineWidth = 1; context.beginPath(); context.roundRect(node.x - 28, node.y - 21, 56, 38, 6); context.fill(); context.stroke(); context.fillStyle = `${nodeColor[node.kind]}55`; context.fillRect(node.x - 23, node.y - 16, 46, 5); context.restore(); });
       agents.forEach((agent, index) => { const next = agents[index + 1]; const below = agents[index + 12]; if (next && index % 12 !== 11) line(agent, next, "#79b7a3", .19, 1); if (below) line(agent, below, "#79b7a3", .19, 1); });
       [["OPSD", "GATEWAY"], ["TMY", "GATEWAY"], ["GATEWAY", "ORACLE"], ["ORACLE", "BUS"], ["BUS", "BROKER"], ["BROKER", "CLEARER"], ["CLEARER", "SOLVER"], ["TOPOLOGY", "SOLVER"], ["SOLVER", "BROKER"], ["BROKER", "LEDGER"], ["LEDGER", "UI"]].forEach(([a, b]) => { const from = getNode(a); const to = getNode(b); if (from && to) line(from, to, "#81c8b2", .3, 1.3, true); });
-      [["GATEWAY", "LSTM"], ["LSTM", "RAG"], ["RAG", "ORACLE"], ["ORACLE", "ORACLE_POLICY"], ["ORACLE_POLICY", "BUS"], ["MAPPO", "FEDAVG"], ["MAPPO", "DQN"], ["LLM", "TEMP"], ["TEMP", "DQN"], ["DQN", "BROKER"], ["BROKER", "GAME"], ["GAME", "SHAPLEY"], ["GAME", "NASH"], ["GAME", "VPP"], ["VPP", "CORE_LP"], ["CORE_LP", "SEPARATION"], ["SEPARATION", "POWERFLOW"], ["TOPOLOGY", "POWERFLOW"], ["POWERFLOW", "SOLVER"], ["SOLVER", "SAFETY"], ["BUS", "REDIS"], ["REDIS", "BULLMQ"], ["BULLMQ", "BROKER"], ["LEDGER", "ZK"], ["ZK", "POSTGRES"], ["POSTGRES", "SOCKET"], ["SOCKET", "UI"]].forEach(([a, b]) => { const from = getNode(a); const to = getNode(b); if (from && to) line(from, to, "#b7d8ca", .16, 1, true); });
+      [["RAG", "ORACLE"], ["ORACLE", "ORACLE_POLICY"], ["ORACLE_POLICY", "BUS"], ["MAPPO", "DQN"], ["LLM", "TEMP"], ["TEMP", "DQN"], ["DQN", "BROKER"], ["BROKER", "GAME"], ["GAME", "SHAPLEY"], ["GAME", "NASH"], ["GAME", "VPP"], ["VPP", "CORE_LP"], ["CORE_LP", "SEPARATION"], ["SEPARATION", "POWERFLOW"], ["TOPOLOGY", "POWERFLOW"], ["POWERFLOW", "SOLVER"], ["SOLVER", "SAFETY"], ["BUS", "REDIS"], ["REDIS", "BULLMQ"], ["BULLMQ", "BROKER"], ["LEDGER", "ZK"], ["ZK", "POSTGRES"], ["POSTGRES", "SOCKET"], ["SOCKET", "UI"]].forEach(([a, b]) => { const from = getNode(a); const to = getNode(b); if (from && to) line(from, to, "#b7d8ca", .16, 1, true); });
       const bus = getNode("BUS"); const broker = getNode("BROKER"); if (bus && broker) agents.forEach((agent, index) => { if (index % 4 === 0) line(bus, agent, "#4ed9ce", .06); if (index % 3 === 0) line(agent, broker, "#a68af2", .055); });
       if (step.phase === 2) agents.forEach((agent, index) => { const peer = agents.find((candidate) => candidate.group === agent.group && candidate.seller !== agent.seller); if (peer && index % 4 === 0) line(agent, peer, phase.color, .46, 1.8); });
       if (stepIndex === 16) { const overloaded = getNode("MG-41"); const reroute = getNode("MG-53"); if (overloaded && reroute) line(overloaded, reroute, phase.color, .95, 5); }

@@ -34,12 +34,14 @@ class BindingConstraintSchema(BaseModel):
     slack: float = Field(..., description="Residual slack SUM_i_in_T x_i* - v(T)")
 
 class StabilityVerifyResponse(BaseModel):
-    isStable: bool = Field(..., description="Whether the coalition is core stable (epsilonStar <= 0)")
+    status: Literal["EXACT_STABLE", "BLOCKING_COALITION_FOUND", "HEURISTIC_NO_VIOLATION_FOUND", "UNVERIFIED"] = Field(
+        ..., description="Verification result status"
+    )
     epsilonStar: float = Field(..., description="Least-core epsilon value")
     allocation: dict[str, float] = Field(..., description="Allocation of surplus to agents")
     margin: float = Field(..., description="Min slack across all permissible deviating coalitions")
     deviating_coalition: list[str] | None = Field(
-        None, description="Worst deviating coalition; non-null only when isStable=False"
+        None, description="Worst deviating coalition; non-null only when status=BLOCKING_COALITION_FOUND"
     )
     binding_constraints: list[BindingConstraintSchema] = Field(
         default_factory=list, description="Constraints active at the LP optimum"

@@ -205,7 +205,7 @@ async def joint_verify(req: JointVerifyRequest) -> JointVerifyResponse:
     allocation = stability_res.allocation
     v_S = sum(allocation.values()) if allocation else 0.0
     
-    if req.stability_request.allocation_mechanism != "least_core" and stability_res.is_stable:
+    if req.stability_request.allocation_mechanism != "least_core" and stability_res.status in ["EXACT_STABLE", "HEURISTIC_NO_VIOLATION_FOUND"]:
         from app.stability.allocation import allocate_proportional, allocate_shapley, allocate_nash_bargaining
         if req.stability_request.allocation_mechanism == "proportional":
             allocation = allocate_proportional(req.stability_request.coalition, v_S, stability_res.outside_options)
@@ -215,7 +215,7 @@ async def joint_verify(req: JointVerifyRequest) -> JointVerifyResponse:
             allocation = allocate_nash_bargaining(req.stability_request.coalition, v_S, stability_res.outside_options)
             
     stab_response = StabilityVerifyResponse(
-        isStable=stability_res.is_stable,
+        status=stability_res.status,
         epsilonStar=stability_res.epsilon_star,
         allocation=allocation,
         outside_options=stability_res.outside_options,
@@ -233,7 +233,7 @@ async def joint_verify(req: JointVerifyRequest) -> JointVerifyResponse:
         solver_version="Least-Core Highs"
     )
 
-    if not stability_res.is_stable:
+    if stability_res.status not in ["EXACT_STABLE", "HEURISTIC_NO_VIOLATION_FOUND"]:
         return JointVerifyResponse(
             passed=False,
             stability_response=stab_response,

@@ -55,7 +55,7 @@ class BindingConstraint:
 
 @dataclass
 class StabilityResult:
-    is_stable: bool
+    status: str
     margin: float
     epsilon_star: float = 0.0
     allocation: dict[Any, float] = field(default_factory=dict)
@@ -98,7 +98,7 @@ def verify_stability(
         v_S = value_model.evaluate(frozenset([agent]), profiles)
         out_opt = profiles[agent].outside_option if agent in profiles else 0.0
         return StabilityResult(
-            is_stable=True,
+            status="EXACT_STABLE",
             margin=float("inf"),
             epsilon_star=0.0,
             allocation={agent: v_S},
@@ -202,7 +202,7 @@ def verify_stability(
             converged = True
             solve_time_ms = (time.perf_counter() - t_start) * 1000
             return StabilityResult(
-                is_stable=False,
+                status="BLOCKING_COALITION_FOUND",
                 margin=-float("inf"),
                 epsilon_star=float("inf"),
                 allocation={},
@@ -268,16 +268,23 @@ def verify_stability(
 
     # is_stable if epsilon_star <= 0 (the core is non-empty)
     # Note: if it's strictly > EPSILON, then it's unstable.
-    is_stable = (epsilon_star <= EPSILON)
+    if epsilon_star <= EPSILON and converged:
+        status = "EXACT_STABLE"
+    elif epsilon_star > EPSILON and converged:
+        status = "BLOCKING_COALITION_FOUND"
+    elif epsilon_star <= EPSILON and not converged:
+        status = "HEURISTIC_NO_VIOLATION_FOUND"
+    else:
+        status = "UNVERIFIED"
 
     return StabilityResult(
-        is_stable=is_stable,
+        status=status,
         margin=round(min_slack, 8),
         epsilon_star=round(epsilon_star, 8),
         allocation=x_star_dict,
         outside_options=outside_options,
         binding_constraints=binding,
-        deviating_coalition=sorted(worst_T) if (worst_T and not is_stable) else None,
+        deviating_coalition=sorted(worst_T) if (worst_T and status == "BLOCKING_COALITION_FOUND") else None,
         rounds=rounds,
         converged=converged,
         solve_time_ms=solve_time_ms,

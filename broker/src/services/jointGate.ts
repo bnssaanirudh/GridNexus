@@ -3,6 +3,7 @@ import { QueueEvents } from "bullmq";
 import { prisma } from "./commitTrade.js";
 import dotenv from "dotenv";
 import { Queue } from "bullmq";
+import { decryptValue } from "../crypto.js";
 
 dotenv.config();
 
@@ -50,23 +51,43 @@ export class JointGate {
         include: { microgrid: { include: { ders: true } } }
       });
       
-      const sellers = agents.filter(a => a.type === "SELLER").map(a => a.microgridId);
-      const buyers = agents.filter(a => a.type === "BUYER").map(a => a.microgridId);
-      
+      let totalSellerCapacity = 0;
+      let totalBuyerCapacity = 0;
+      const sellerCapacities = new Map<string, number>();
+      const buyerCapacities = new Map<string, number>();
+
       for (const agent of agents) {
         const agentId = agent.id;
         coalition.push(agentId);
-        profiles[agentId] = agent.type === "SELLER"
-          ? { type: "seller", generation_cost: 2.0, available_capacity: 100.0, outside_option: 0.0 }
-          : { type: "buyer", energy_value: 10.0, demand: 100.0, outside_option: 0.0 };
-      }
-      
-      // Fallbacks
-      for (const agentId of ctx.agentIds) {
-          if (!agents.find(a => a.id === agentId)) {
-              coalition.push(agentId);
-              profiles[agentId] = { type: "seller", generation_cost: 2.0, available_capacity: 100.0, outside_option: 0.0 };
-          }
+        
+        let capacity = 0;
+        for (const der of agent.microgrid.ders) {
+            capacity += Number(der.ratedPowerKw);
+        }
+
+        const genCost = decryptValue(agent.microgrid.hiddengenerationcost);
+        
+        if (agent.type === "SELLER") {
+            sellerCapacities.set(agent.microgridId, capacity);
+            totalSellerCapacity += capacity;
+            profiles[agentId] = { 
+                type: "seller", 
+                generation_cost: genCost, 
+                available_capacity: capacity, 
+                outside_option: 0.0 
+            };
+        } else {
+            buyerCapacities.set(agent.microgridId, capacity);
+            totalBuyerCapacity += capacity;
+            // Assuming buyers use the same or different field for energy value. 
+            // We use genCost as energy_value for simplicity here if they are a buyer
+            profiles[agentId] = { 
+                type: "buyer", 
+                energy_value: Math.max(genCost, 10.0), 
+                demand: ctx.currentRequestedKwh, 
+                outside_option: 0.0 
+            };
+        }
       }
 
       // 2. Gather Topology for AC Power Flow Check
@@ -77,8 +98,6 @@ export class JointGate {
       const linesData = [];
 
       const powerKw = (ctx.currentRequestedKwh / (ctx.intervalMinutes / 60.0));
-      const p_gen_each = sellers.length > 0 ? powerKw / sellers.length : 0;
-      const p_load_each = buyers.length > 0 ? powerKw / buyers.length : 0;
       let slackSet = false;
 
       for (let i = 0; i < buses.length; i++) {
@@ -87,8 +106,14 @@ export class JointGate {
           let p_load = 0;
 
           for (const mg of b.microgrids) {
-             if (sellers.includes(mg.microgridId)) p_gen += p_gen_each;
-             if (buyers.includes(mg.microgridId)) p_load += p_load_each;
+             if (sellerCapacities.has(mg.microgridId) && totalSellerCapacity > 0) {
+                 const proportion = sellerCapacities.get(mg.microgridId)! / totalSellerCapacity;
+                 p_gen += powerKw * proportion;
+             }
+             if (buyerCapacities.has(mg.microgridId) && totalBuyerCapacity > 0) {
+                 const proportion = buyerCapacities.get(mg.microgridId)! / totalBuyerCapacity;
+                 p_load += powerKw * proportion;
+             }
           }
 
           nodes.push({

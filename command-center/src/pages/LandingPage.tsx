@@ -317,8 +317,8 @@ export default function LandingPage() {
               ref: "[1] Low, S. H. (2014). 'Convex Relaxation of Optimal Power Flow.' IEEE Transactions on Control of Network Systems."
             },
             {
-              title: "FEDERATED MAPPO (FedMAPPO)",
-              desc: "Implements privacy-preserving Multi-Agent PPO. Agents train local actor networks and sync via FedAvg, keeping cost curves and surplus proprietary from the centralized critic.",
+              title: "MULTI-AGENT PPO (MAPPO)",
+              desc: "Implements Multi-Agent PPO. Agents train a centralized critic to evaluate coalitional stability while preserving privacy.",
               ref: "[2] Yu, C. et al. (2022). 'The Surprising Effectiveness of PPO in Cooperative Multi-Agent Games.' NeurIPS."
             },
             {

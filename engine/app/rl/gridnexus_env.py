@@ -262,10 +262,15 @@ class GridNexusEnv(ParallelEnv):
     ) -> float:
         """
         Utility-driven reward shaping:
-        - Trade surplus: reward for ACCEPT relative to own surplus and cost. No arbitrary bonuses.
+        - Trade surplus: reward for ACCEPT relative to own surplus and cost.
+        - Switching costs applied when action changes from previous.
+        - Grid constraints and blocking coalition penalties via oracle.
         """
         surplus = self._surplus[agent]
         cost = self._cost[agent]
+        
+        switching_cost = 0.05 if self._prev_stances.get(agent, 1) != action else 0.0
+        blocking_penalty = 0.5 if (self._oracle_signal > 0.8 and coalition_formed) else 0.0
 
         # Base trade surplus
         if action == 0: # ACCEPT
@@ -281,7 +286,7 @@ class GridNexusEnv(ParallelEnv):
             if action == 2: # WALK_AWAY
                 self._trade_rejections[agent] += 1
 
-        return float(trade_surplus)
+        return float(trade_surplus - switching_cost - blocking_penalty)
 
     def _observe(self, agent: str) -> np.ndarray:
         """Construct the observation vector for *agent*."""

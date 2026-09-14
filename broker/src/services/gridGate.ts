@@ -40,21 +40,37 @@ export class GridGate {
       // Determine power in kW
       const powerKw = (ctx.currentRequestedKwh / (ctx.intervalMinutes / 60.0));
 
-      // 2. We need to identify who is buying and who is selling among agentIds
+      // 2. Identify who is buying and selling, and get their DERs
       const agents = await prisma.agent.findMany({
-          where: { id: { in: ctx.agentIds } }
+          where: { id: { in: ctx.agentIds } },
+          include: {
+            microgrid: {
+              include: { ders: true }
+            }
+          }
       });
 
-      const sellers = agents.filter(a => a.type === "SELLER").map(a => a.microgridId);
-      const buyers = agents.filter(a => a.type === "BUYER").map(a => a.microgridId);
+      let totalSellerCapacity = 0;
+      let totalBuyerCapacity = 0;
 
-      // Divide the power equally for simplicity among buyers and sellers
-      const p_gen_each = sellers.length > 0 ? powerKw / sellers.length : 0;
-      const p_load_each = buyers.length > 0 ? powerKw / buyers.length : 0;
+      const sellerCapacities = new Map<string, number>();
+      const buyerCapacities = new Map<string, number>();
+
+      for (const agent of agents) {
+          let capacity = 0;
+          for (const der of agent.microgrid.ders) {
+              capacity += Number(der.ratedPowerKw);
+          }
+          if (agent.type === "SELLER") {
+              sellerCapacities.set(agent.microgridId, capacity);
+              totalSellerCapacity += capacity;
+          } else if (agent.type === "BUYER") {
+              buyerCapacities.set(agent.microgridId, capacity);
+              totalBuyerCapacity += capacity;
+          }
+      }
 
       // Ensure there's a slack bus. We just pick the first bus if none is explicitly slack
-      // Or we can let engine handle islanding. We'll mark the first bus as slack.
-      
       let slackSet = false;
 
       for (let i = 0; i < buses.length; i++) {
@@ -65,8 +81,15 @@ export class GridGate {
 
           // Check if this bus has one of our trading microgrids
           for (const mg of b.microgrids) {
-             if (sellers.includes(mg.microgridId)) p_gen += p_gen_each;
-             if (buyers.includes(mg.microgridId)) p_load += p_load_each;
+             if (sellerCapacities.has(mg.microgridId) && totalSellerCapacity > 0) {
+                 // Apportion based on proportion of total seller capacity
+                 const proportion = sellerCapacities.get(mg.microgridId)! / totalSellerCapacity;
+                 p_gen += powerKw * proportion;
+             }
+             if (buyerCapacities.has(mg.microgridId) && totalBuyerCapacity > 0) {
+                 const proportion = buyerCapacities.get(mg.microgridId)! / totalBuyerCapacity;
+                 p_load += powerKw * proportion;
+             }
           }
 
           nodes.push({
