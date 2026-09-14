@@ -1,21 +1,45 @@
-name: "GridNexus Core Claims Evaluation"
-description: "Reproducible multi-seed experiment configuration for evaluating the proposed pipeline against baselines."
+name: "GridNexus Ablation Studies"
+description: "Rigorous ablation matrix comparing Random, Independent PPO, and MAPPO, with and without the Semantic Oracle."
 output_dir: "artifacts/experiments"
 
 scenarios:
-  - name: "baseline"
-    description: "REINFORCE oracle disabled, random negotiation policies."
+  - name: "baseline-random"
+    description: "No RL, no Oracle (Random behavior)."
     seeds: [42, 101, 202, 303, 404]
     oracle_enabled: false
-    mappo_enabled: false
+    rl_agent_type: "random"
     num_episodes: 50
     steps_per_episode: 20
 
-  - name: "proposed"
-    description: "Proposed pipeline with trained REINFORCE Oracle and MAPPO multi-agent negotiation."
+  - name: "ippo-no-oracle"
+    description: "Standard IPPO (decentralized critic), no RAG stability insights."
+    seeds: [42, 101, 202, 303, 404]
+    oracle_enabled: false
+    rl_agent_type: "ippo"
+    num_episodes: 50
+    steps_per_episode: 20
+
+  - name: "mappo-no-oracle"
+    description: "MAPPO (Centralized critic), no RAG stability insights."
+    seeds: [42, 101, 202, 303, 404]
+    oracle_enabled: false
+    rl_agent_type: "mappo"
+    num_episodes: 50
+    steps_per_episode: 20
+
+  - name: "ippo-oracle"
+    description: "IPPO with RAG Oracle signals."
     seeds: [42, 101, 202, 303, 404]
     oracle_enabled: true
-    mappo_enabled: true
+    rl_agent_type: "ippo"
+    num_episodes: 50
+    steps_per_episode: 20
+
+  - name: "mappo-oracle"
+    description: "Proposed Architecture: MAPPO with RAG Oracle signals."
+    seeds: [42, 101, 202, 303, 404]
+    oracle_enabled: true
+    rl_agent_type: "mappo"
     num_episodes: 50
     steps_per_episode: 20
 

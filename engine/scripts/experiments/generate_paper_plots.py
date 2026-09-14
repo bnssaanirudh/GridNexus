@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import os
+import csv
+from pathlib import Path
 
 # Create output directory for figures
 output_dir = "paper_figures"
@@ -24,66 +26,90 @@ plt.rcParams.update({
 })
 sns.set_theme(style="whitegrid", rc={"font.family": "serif"})
 
-def generate_rl_convergence():
-    """Generates RL Convergence Curves (FedMAPPO vs Baselines)"""
-    episodes = np.arange(1, 1001)
+def generate_evaluation_plots():
+    """Generates evaluation metric plots based on actual experiment data from run_experiment.py."""
+    raw_metrics_path = Path("artifacts/experiments/raw_metrics.csv")
     
-    # Simulate smoothed rewards
-    fedmappo = 1 - np.exp(-episodes / 200) + np.random.normal(0, 0.02, 1000)
-    dqn = 0.7 - 0.7 * np.exp(-episodes / 400) + np.random.normal(0, 0.03, 1000)
-    ppo = 0.85 - 0.85 * np.exp(-episodes / 300) + np.random.normal(0, 0.025, 1000)
+    if not raw_metrics_path.exists():
+        print(f"Metrics file not found at {raw_metrics_path}. Please run run_experiment.py first.")
+        return
+
+    # Load data
+    data = []
+    with open(raw_metrics_path, "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            data.append({
+                "scenario": row["scenario"],
+                "episode": int(row["episode"]),
+                "mean_surplus": float(row["mean_surplus_captured"]),
+                "mean_coalition": float(row["mean_coalition_size"])
+            })
+
+    episodes = sorted(list(set(d["episode"] for d in data)))
+    scenarios = list(set(d["scenario"] for d in data))
     
-    def smooth(y, box_pts=50):
-        box = np.ones(box_pts)/box_pts
-        y_smooth = np.convolve(y, box, mode='same')
-        return y_smooth
-    
+    # Sort scenarios so 'baseline' is typically first
+    scenarios.sort()
+
+    colors = {'baseline': '#ff7f0e', 'proposed': '#1f77b4'}
+    labels = {'baseline': 'Baseline (Random/Heuristic)', 'proposed': 'GridNexus (MAPPO)'}
+
+    # Plot 1: Evaluation Surplus over Episodes
     plt.figure(figsize=(8, 5))
-    plt.plot(episodes, smooth(fedmappo), label='GridNexus (FedMAPPO)', color='#1f77b4', linewidth=2.5)
-    plt.fill_between(episodes, smooth(fedmappo)-0.05, smooth(fedmappo)+0.05, color='#1f77b4', alpha=0.2)
     
-    plt.plot(episodes, smooth(ppo), label='Centralized PPO', color='#ff7f0e', linewidth=2, linestyle='--')
-    plt.fill_between(episodes, smooth(ppo)-0.06, smooth(ppo)+0.06, color='#ff7f0e', alpha=0.2)
-    
-    plt.plot(episodes, smooth(dqn), label='Independent DQN', color='#2ca02c', linewidth=2, linestyle=':')
-    plt.fill_between(episodes, smooth(dqn)-0.08, smooth(dqn)+0.08, color='#2ca02c', alpha=0.2)
-    
-    plt.xlabel('Training Episodes')
-    plt.ylabel('Normalized Social Welfare')
-    plt.title('Convergence of Multi-Agent Negotiation Policies')
+    for scenario in scenarios:
+        scenario_data = [d for d in data if d["scenario"] == scenario]
+        means, stds = [], []
+        
+        for ep in episodes:
+            ep_data = [d["mean_surplus"] for d in scenario_data if d["episode"] == ep]
+            if ep_data:
+                means.append(np.mean(ep_data))
+                stds.append(np.std(ep_data))
+            else:
+                means.append(0)
+                stds.append(0)
+                
+        means = np.array(means)
+        stds = np.array(stds)
+        
+        color = colors.get(scenario, '#2ca02c')
+        label = labels.get(scenario, scenario)
+        
+        plt.plot(episodes, means, label=label, color=color, linewidth=2.5)
+        plt.fill_between(episodes, means - stds, means + stds, color=color, alpha=0.2)
+
+    plt.xlabel('Evaluation Episodes')
+    plt.ylabel('Mean Surplus Captured (USD)')
+    plt.title('Evaluation: Multi-Agent Policy Performance')
     plt.legend(loc='lower right')
     
-    plt.savefig(f"{output_dir}/rl_convergence.png")
+    plt.savefig(f"{output_dir}/evaluation_surplus.png")
     plt.close()
 
-def generate_pareto_front():
-    """Generates a Coalition Formation Pareto Front Scatter Plot"""
-    # Simulate Pareto front
-    cost = np.random.uniform(0.1, 1.0, 500)
-    surplus = np.random.uniform(0.1, 1.0, 500)
+    # Plot 2: Bar chart for Mean Coalition Size
+    plt.figure(figsize=(6, 5))
+    bar_means = []
+    bar_stds = []
+    bar_labels = []
+    bar_colors = []
     
-    # Filter to create a pareto frontier shape
-    pareto_mask = cost + surplus > 1.2
-    
-    plt.figure(figsize=(7, 6))
-    plt.scatter(cost[pareto_mask], surplus[pareto_mask], color='#d62728', alpha=0.7, label='Optimal Coalition (FedMAPPO)')
-    plt.scatter(cost[~pareto_mask], surplus[~pareto_mask], color='#7f7f7f', alpha=0.3, label='Suboptimal Trades')
-    
-    # Plot pareto curve
-    x = np.linspace(0.2, 1.0, 100)
-    y = 1.2 - x + 0.1*x**2
-    plt.plot(x, y, 'k--', linewidth=2, label='Theoretical Pareto Frontier (SOCP)')
-    
-    plt.xlabel('Operational Cost (USD/kWh)')
-    plt.ylabel('Retained Surplus Utility')
+    for scenario in scenarios:
+        vals = [d["mean_coalition"] for d in data if d["scenario"] == scenario]
+        bar_means.append(np.mean(vals))
+        bar_stds.append(np.std(vals))
+        bar_labels.append(labels.get(scenario, scenario))
+        bar_colors.append(colors.get(scenario, '#2ca02c'))
+
+    plt.bar(bar_labels, bar_means, yerr=bar_stds, capsize=5, color=bar_colors, alpha=0.8)
+    plt.ylabel('Mean Coalition Size')
     plt.title('Coalition Formation Efficiency')
-    plt.legend()
-    
-    plt.savefig(f"{output_dir}/pareto_front.png")
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/coalition_size_comparison.png")
     plt.close()
 
 if __name__ == "__main__":
-    print("Generating Q1 Publication-Ready Figures...")
-    generate_rl_convergence()
-    generate_pareto_front()
+    print("Generating Q1 Publication-Ready Figures from REAL DATA...")
+    generate_evaluation_plots()
     print(f"Figures saved to {output_dir}/")

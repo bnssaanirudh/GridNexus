@@ -88,12 +88,12 @@ class Actor(nn.Module):
 
 
 class CentralCritic(nn.Module):
-    """Centralised critic: maps concatenated all-agent obs → value scalar."""
+    """Centralised critic: maps global state → value scalar."""
 
-    def __init__(self, n_agents: int, obs_dim: int, hidden_dim: int) -> None:
+    def __init__(self, global_obs_dim: int, hidden_dim: int) -> None:
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_agents * obs_dim, hidden_dim),
+            nn.Linear(global_obs_dim, hidden_dim),
             nn.Tanh(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.Tanh(),
@@ -160,7 +160,8 @@ class MAPPOTrainer:
             ag: Actor(OBS_DIM, ACTION_DIM, cfg.hidden_dim) for ag in agents
         }
         # Single centralised critic
-        self.critic = CentralCritic(cfg.n_agents, OBS_DIM, cfg.hidden_dim)
+        global_obs_dim = self.env.state_space().shape[0]
+        self.critic = CentralCritic(global_obs_dim, cfg.hidden_dim)
 
         self.actor_optims: dict[str, torch.optim.Adam] = {
             ag: torch.optim.Adam(self.actors[ag].parameters(), lr=cfg.lr_actor)
@@ -219,7 +220,7 @@ class MAPPOTrainer:
         total_surpluses: list[float] = []
 
         while self.env.agents:
-            global_obs = self._build_global_obs(obs_dict)
+            global_obs = self.env.state()
 
             # Sample actions from each actor
             actions: dict[str, int] = {}
@@ -385,16 +386,6 @@ class MAPPOTrainer:
         avg_pl = total_policy_loss / max(n_updates, 1)
         avg_vl = total_value_loss / max(n_updates, 1)
         return avg_pl, avg_vl
-
-    # ── Helpers ───────────────────────────────────────────────────────────────
-
-    def _build_global_obs(self, obs_dict: dict[str, np.ndarray]) -> np.ndarray:
-        """Concatenate all agents' observations into a single global vector."""
-        parts = [
-            obs_dict.get(ag, np.zeros(OBS_DIM, dtype=np.float32))
-            for ag in self.env.possible_agents
-        ]
-        return np.concatenate(parts, axis=0).astype(np.float32)
 
     # ── Persistence ───────────────────────────────────────────────────────────
 

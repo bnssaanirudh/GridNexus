@@ -24,21 +24,22 @@ def evaluate_scenario(scenario_cfg: dict, config_dir: Path) -> dict:
     logger.info(f"Evaluating scenario: {scenario_cfg['name']}")
     seeds = scenario_cfg['seeds']
     oracle_enabled = scenario_cfg['oracle_enabled']
-    mappo_enabled = scenario_cfg['mappo_enabled']
+    rl_agent_type = scenario_cfg.get('rl_agent_type', 'random')
     
     # Load Oracle
     oracle = None
     if oracle_enabled:
         oracle = OraclePolicy(checkpoint_dir=Path("artifacts/oracle"))
         
-    # Load MAPPO actors
+    # Load RL actors
     actors = {}
-    if mappo_enabled:
-        # Load pre-trained actors
+    if rl_agent_type in ['mappo', 'ippo']:
+        # Load pre-trained actors from respective dirs
+        artifact_subdir = "artifacts/mappo" if rl_agent_type == 'mappo' else "artifacts/ippo"
         for i in range(5):
             agent = f"agent_{i}"
             act = Actor(OBS_DIM, ACTION_DIM, 64)
-            ckpt_path = Path("artifacts/mappo") / f"actor_{agent}.pt"
+            ckpt_path = Path(artifact_subdir) / f"actor_{agent}.pt"
             if ckpt_path.exists():
                 act.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
             act.eval()
@@ -77,10 +78,10 @@ def evaluate_scenario(scenario_cfg: dict, config_dir: Path) -> dict:
                     signal_map = {"POOL_NOW": 0.0, "DEMAND_SURGE_SOON": 0.2, "STABILITY_AT_RISK": 0.4, "STORM_ALERT": 0.6, "HOLD_STABLE": 0.8}
                     oracle_signal = signal_map.get(best_signal, 0.5)
                 
-                # MAPPO Actions
+                # RL Actions
                 actions = {}
                 for ag in env.agents:
-                    if mappo_enabled:
+                    if rl_agent_type in ['mappo', 'ippo'] and ag in actors:
                         # Override env oracle signal with our calculated one
                         obs_dict[ag][3] = oracle_signal
                         obs_t = torch.FloatTensor(obs_dict[ag]).unsqueeze(0)

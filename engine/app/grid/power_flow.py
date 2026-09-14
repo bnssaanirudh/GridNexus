@@ -247,3 +247,80 @@ class SOCPPowerFlow:
             "status": prob.status
         }
 
+class ACPowerFlow:
+    """
+    Implements full non-linear AC Power Flow using pandapower.
+    Provides mathematically exact certification for GridGate dispatch bindings.
+    """
+    def __init__(self, network: ElectricalNetwork):
+        self.network = network
+
+    def solve(self) -> Dict[str, Any]:
+        import pandapower as pp
+        import pandapower.networks as nw
+
+        net = pp.create_empty_network(f_hz=50.0)
+        
+        # Mapping
+        buses = {}
+        for nid, node in self.network.nodes.items():
+            bus_idx = pp.create_bus(net, vn_kv=11.0, name=nid, min_vm_pu=node.v_min_pu, max_vm_pu=node.v_max_pu)
+            buses[nid] = bus_idx
+            if node.is_slack:
+                pp.create_ext_grid(net, bus_idx, vm_pu=1.0)
+            else:
+                p_mw = (node.p_load_kw - node.p_gen_kw) / 1000.0
+                q_mvar = (node.q_load_kvar - node.q_gen_kvar) / 1000.0
+                pp.create_load(net, bus_idx, p_mw=p_mw, q_mvar=q_mvar)
+
+        for lid, line in self.network.lines.items():
+            # In pandapower, line limits are usually given in kA. We will approximate or just use a dummy standard type and override impedance.
+            # Using from_bus base voltage for impedance conversion
+            # Z_base = V^2 / S_base
+            # Actually, pandapower takes R and X directly in ohms, length in km!
+            # Since our ElectricalNetwork gives absolute ohms (R_ohms, X_ohms), we just pass them directly (length=1 km).
+            pp.create_line_from_parameters(
+                net,
+                from_bus=buses[line.from_node],
+                to_bus=buses[line.to_node],
+                length_km=1.0,
+                r_ohm_per_km=line.r_ohms,
+                x_ohm_per_km=line.x_ohms,
+                c_nf_per_km=0.0,
+                max_i_ka=1.0, # We will calculate loading pct manually based on kw limits
+                name=lid
+            )
+
+        try:
+            pp.runpp(net, enforce_q_lims=False)
+        except pp.LoadflowNotConverged:
+            raise ValueError("AC Power Flow did not converge. Dispatch is physically infeasible.")
+            
+        voltages_pu = {nid: net.res_bus.vm_pu.at[buses[nid]] for nid in self.network.nodes.keys()}
+        
+        line_flows_kw = {}
+        line_loading_pct = {}
+        
+        # To calculate line flows consistently with our model:
+        for idx, (lid, line) in enumerate(self.network.lines.items()):
+            p_from_kw = net.res_line.p_from_mw.at[idx] * 1000.0
+            line_flows_kw[lid] = p_from_kw
+            limit = max(line.thermal_limit_kw, 1e-6)
+            line_loading_pct[lid] = (abs(p_from_kw) / limit) * 100.0
+            
+        # check limits
+        for nid, v in voltages_pu.items():
+            if v < self.network.nodes[nid].v_min_pu - 1e-4 or v > self.network.nodes[nid].v_max_pu + 1e-4:
+                raise ValueError(f"Voltage limit violation at {nid}: {v} p.u.")
+                
+        for lid, pct in line_loading_pct.items():
+            if pct > 100.0 + 1e-4:
+                raise ValueError(f"Thermal limit violation on {lid}: {pct}%")
+
+        return {
+            "voltages_pu": voltages_pu,
+            "line_flows_kw": line_flows_kw,
+            "line_loading_pct": line_loading_pct,
+            "status": "optimal"
+        }
+

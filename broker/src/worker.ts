@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import { isProduction } from "./config.js";
 import "./workers/oracleBroadcastWorker.js";
+import { jointWorker } from "./workers/jointWorker.js";
 
 dotenv.config();
 
@@ -100,6 +101,7 @@ export async function closeWorker() {
   try {
     await stabilityWorker.close();
     await gridWorker.close();
+    await jointWorker.close();
     await prisma.$disconnect();
   } catch (_) { /* ignore */ }
 }
@@ -202,4 +204,4 @@ gridWorker.on("failed", (job, err) => {
 
 console.log("Grid Worker started.");
 
-export { stabilityWorker, gridWorker };
+export { stabilityWorker, gridWorker, jointWorker };

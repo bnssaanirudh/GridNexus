@@ -38,6 +38,12 @@ try:
 except ImportError:
     _NUMPY_VERSION = "unknown"
 
+try:
+    import pandapower
+    _PANDAPOWER_VERSION = pandapower.__version__
+except ImportError:
+    _PANDAPOWER_VERSION = "unknown"
+
 
 class ConstraintChecker:
     """
@@ -124,7 +130,7 @@ def generate_certificate(
     pf_results: Dict[str, Any],
     violations: List[str],
     topology_version: int,
-    solver: str = "dc",   # "dc" | "socp"
+    solver: str = "dc",   # "dc" | "socp" | "ac"
 ) -> Dict[str, Any]:
     """
     Generates an auditable GridFeasibilityCertificate payload.
@@ -136,6 +142,7 @@ def generate_certificate(
     solver:
         "dc"   → DCPowerFlow  (numpy.linalg.solve)
         "socp" → SOCPPowerFlow (cvxpy ECOS)
+        "ac"   → ACPowerFlow (pandapower runpp)
     """
     is_feasible = len(violations) == 0
 
@@ -163,6 +170,9 @@ def generate_certificate(
     if solver == "socp":
         solver_name = "cvxpy_SOCP_ECOS"
         solver_version = _CVXPY_VERSION
+    elif solver == "ac":
+        solver_name = "pandapower_AC_NR"
+        solver_version = _PANDAPOWER_VERSION
     else:
         solver_name = "numpy_DC_linsolve"
         solver_version = _NUMPY_VERSION

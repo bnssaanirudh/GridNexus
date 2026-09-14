@@ -20,6 +20,13 @@ from sqlalchemy import text
 from app.deps import AsyncSessionLocal
 from app.oracle.inference import get_oracle_policy
 from app.schemas.oracle import OracleSignalRequest, OracleSignalResponse
+from app.schemas.joint_certificate import JointVerifyRequest, JointVerifyResponse
+from app.stability.stability_solver import verify_stability
+from app.graph.fixtures import generate_city_grid
+from app.stability.value_model import VPPValueModel
+from app.grid.network_model import ElectricalNetwork, Node, Line
+from app.grid.power_flow import ACPowerFlow
+from app.grid.certificate import ConstraintChecker, generate_certificate
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/oracle", tags=["Oracle"])
@@ -173,4 +180,104 @@ async def get_relevant_signals(query: str, k: int = 3) -> list[dict[str, Any]]:
     except Exception as exc:
         logger.exception("Retrieval failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Retrieval failed: {exc}") from exc
+
+
+@router.post("/joint-verify", response_model=JointVerifyResponse)
+async def joint_verify(req: JointVerifyRequest) -> JointVerifyResponse:
+    import networkx as nx
+    
+    # 1. Run Stability Check (mock graph for now to avoid DB coupling here, or could use the passed nodes)
+    # The actual graph in production uses bus topology, but for this certificate endpoint we will just construct
+    # a fully connected graph of the coalition to represent they can trade. 
+    # Real physical feasibility is checked by the AC solver below anyway!
+    g = nx.complete_graph(req.stability_request.coalition)
+    value_model = VPPValueModel()
+    
+    stability_res = verify_stability(
+        coalition=req.stability_request.coalition,
+        graph=g,
+        profiles=req.stability_request.profiles,
+        value_model=value_model,
+    )
+    
+    from app.schemas.stability import StabilityVerifyResponse, BindingConstraintSchema
+    
+    allocation = stability_res.allocation
+    v_S = sum(allocation.values()) if allocation else 0.0
+    
+    if req.stability_request.allocation_mechanism != "least_core" and stability_res.is_stable:
+        from app.stability.allocation import allocate_proportional, allocate_shapley, allocate_nash_bargaining
+        if req.stability_request.allocation_mechanism == "proportional":
+            allocation = allocate_proportional(req.stability_request.coalition, v_S, stability_res.outside_options)
+        elif req.stability_request.allocation_mechanism == "shapley":
+            allocation = allocate_shapley(req.stability_request.coalition, req.stability_request.profiles, value_model)
+        elif req.stability_request.allocation_mechanism == "nash":
+            allocation = allocate_nash_bargaining(req.stability_request.coalition, v_S, stability_res.outside_options)
+            
+    stab_response = StabilityVerifyResponse(
+        isStable=stability_res.is_stable,
+        epsilonStar=stability_res.epsilon_star,
+        allocation=allocation,
+        outside_options=stability_res.outside_options,
+        margin=stability_res.margin,
+        deviating_coalition=stability_res.deviating_coalition,
+        binding_constraints=[
+            BindingConstraintSchema(coalition=bc.coalition, slack=bc.slack)
+            for bc in stability_res.binding_constraints
+        ],
+        rounds=stability_res.rounds,
+        converged=stability_res.converged,
+        solve_time_ms=stability_res.solve_time_ms,
+        topologyVersion=1,
+        value_model_version="1.0",
+        solver_version="Least-Core Highs"
+    )
+
+    if not stability_res.is_stable:
+        return JointVerifyResponse(
+            passed=False,
+            stability_response=stab_response,
+            grid_certificate=None
+        )
+        
+    # 2. Run AC Power Flow Grid Feasibility
+    network = ElectricalNetwork()
+    for n in req.nodes:
+        network.nodes[n["id"]] = Node(
+            id=n["id"],
+            voltage_level_kv=n["voltage_level_kv"],
+            is_slack=n.get("is_slack", False),
+            p_load_kw=n.get("p_load_kw", 0.0),
+            p_gen_kw=n.get("p_gen_kw", 0.0)
+        )
+    for l in req.lines:
+        network.lines[l["id"]] = Line(
+            id=l["id"],
+            from_node=l["from_node"],
+            to_node=l["to_node"],
+            r_ohms=l["r_ohms"],
+            x_ohms=l["x_ohms"],
+            thermal_limit_kw=l["thermal_limit_kw"]
+        )
+        
+    solver = ACPowerFlow(network)
+    try:
+        pf_results = solver.solve()
+        is_feasible, violations = ConstraintChecker.check_network(network, pf_results)
+        cert = generate_certificate(req.negotiation_id, network, pf_results, violations, 1, solver="ac")
+        
+        return JointVerifyResponse(
+            passed=is_feasible,
+            stability_response=stab_response,
+            grid_certificate=cert
+        )
+    except Exception as e:
+        logger.exception("AC Power flow crashed")
+        return JointVerifyResponse(
+            passed=False,
+            stability_response=stab_response,
+            grid_certificate=None
+        )
+
+
 

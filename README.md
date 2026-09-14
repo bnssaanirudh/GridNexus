@@ -237,9 +237,7 @@ Controlled by the `GRIDNEXUS_MODE` environment variable:
 | **StabilityGate & GridGate** | ✅ **Implemented** | Row-Constraint-Generation LP solver & OPF feasibility checks |
 | **Settlement & Audit Ledger** | ✅ **Implemented** | Idempotent transaction committer & SHA-256 hash-chained ledger |
 | **Geospatial Command Center** | ✅ **Implemented** | Role-aware React 18 / Vite SPA with dark/light themes |
-| **India Spectral TMY Solar Datasets** | 🔬 **Research/Sim** | Offline HDF5 solar irradiance matrix for scenario simulation |
-| **Live Hardware Inverter Smart Contract**| ⏳ **Future Work** | On-chain EVM / Solana smart contract settlement adapter |
-| **Autonomous Frequency Regulation** | ⏳ **Future Work** | Sub-second primary frequency response microgrid controllers |
+| **GridNexus Patent Demonstrations** | ✅ **Implemented** | Formal structural IP proofs and ablation studies (v1.0 evidence) |
 
 ---
 

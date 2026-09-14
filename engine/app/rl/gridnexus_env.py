@@ -13,7 +13,7 @@ Design decisions (recorded in docs/ASSUMPTIONS.md §):
 - The episode ends after MAX_STEPS rounds.
 - MAPPO now chooses genuine negotiation actions (ACCEPT, COUNTER_OFFER, WALK_AWAY, JOIN, LEAVE).
 - Rewards are strictly utility-driven (trade surplus) with no arbitrary bonuses.
-- **Privacy Update (FedMAPPO)**: The `state()` method now masks private cost/surplus curves to ensure the centralized critic is privacy-preserving.
+- **Privacy Update (MAPPO)**: The `state()` method now masks private cost/surplus curves to ensure the centralized critic is privacy-preserving.
 """
 
 from __future__ import annotations
@@ -32,19 +32,7 @@ from app.data.india_spectral_tmy import IndiaSpectralTMYDataset
 from app.oracle.llm_oracle import fetch_weather_and_predict_stress
 from app.rl.forecasting import get_forecast_error
 
-def fedavg_sync(global_weights: dict, local_weights: list[dict]) -> dict:
-    """
-    Federated Averaging (FedAvg) synchronization hook.
-    Averages local actor network weights across the microgrid coalition
-    without sharing private gradients or data.
-    """
-    if not local_weights:
-        return global_weights
-    
-    new_weights = {}
-    for k in global_weights.keys():
-        new_weights[k] = sum(w[k] for w in local_weights) / len(local_weights)
-    return new_weights
+
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -142,7 +130,7 @@ class GridNexusEnv(ParallelEnv):
 
     @functools.lru_cache(maxsize=None)
     def state_space(self) -> spaces.Box:
-        """Global state space for FedMAPPO Critic (masked for privacy)."""
+        """Global state space for Centralized Critic (masked for privacy)."""
         # State dimension: (round_frac, oracle_signal, coalition_size_frac) + n_agents * (action)
         dim = 3 + self.n_agents
         return spaces.Box(low=0.0, high=1.0, shape=(dim,), dtype=np.float32)
@@ -340,7 +328,7 @@ class GridNexusEnv(ParallelEnv):
 
     def state(self) -> np.ndarray:
         """
-        Global state for FedMAPPO Critic.
+        Global state for Centralized Critic.
         Strictly masks private parameters (surplus, cost) to guarantee data privacy.
         """
         coalition_agents_count = sum(1 for s in self._prev_stances.values() if s in [0, 3])

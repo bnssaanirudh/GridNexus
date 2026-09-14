@@ -1,6 +1,7 @@
 import uuid
 import hashlib
 import os
+import httpx
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -104,9 +105,31 @@ class WeatherConnector(BaseConnector):
                     synthetic=True
                 ))
         else:
-            # Placeholder for real HTTP call
-            docs = []
-            
+            try:
+                # Real HTTP call using httpx
+                response = httpx.get(
+                    "https://api.openweathermap.org/data/2.5/weather",
+                    params={"q": query or "London", "appid": self.api_key},
+                    timeout=5.0
+                )
+                response.raise_for_status()
+                data = response.json()
+                docs = [
+                    RawDocument(
+                        source_type="weather",
+                        content=f"Weather in {data.get('name')}: {data.get('weather', [{}])[0].get('description')}. Temp: {data.get('main', {}).get('temp')}K.",
+                        source_name="OpenWeatherMap",
+                        publisher="OpenWeather",
+                        trust_score=0.8,
+                        connector_version=self.VERSION,
+                        synthetic=False
+                    )
+                ]
+            except httpx.RequestError as e:
+                raise Exception(f"EXTERNAL_CONTEXT_UNAVAILABLE: Failed to connect to Weather API: {e}")
+            except httpx.HTTPStatusError as e:
+                raise Exception(f"EXTERNAL_CONTEXT_UNAVAILABLE: Weather API returned HTTP {e.response.status_code}")
+                
         for d in docs:
             d.compute_hash()
             
@@ -156,7 +179,31 @@ class GridLoadConnector(BaseConnector):
                 )
             ]
         else:
-            docs = []
+            try:
+                # Real HTTP call to US EIA API (as an example ISO data source)
+                # Note: expects EIA API v2 format
+                response = httpx.get(
+                    "https://api.eia.gov/v2/electricity/rto/region-data/data/",
+                    params={"api_key": self.api_key, "frequency": "hourly", "data[0]": "value"},
+                    timeout=5.0
+                )
+                response.raise_for_status()
+                data = response.json()
+                docs = [
+                    RawDocument(
+                        source_type="grid_load",
+                        content=f"Current EIA ISO demand data fetched. Response summary: {str(data.get('response', {}).get('total', 0))} records available.",
+                        source_name="ISOMarketData",
+                        publisher="EIA",
+                        trust_score=0.9,
+                        connector_version=self.VERSION,
+                        synthetic=False
+                    )
+                ]
+            except httpx.RequestError as e:
+                raise Exception(f"EXTERNAL_CONTEXT_UNAVAILABLE: Failed to connect to ISO API: {e}")
+            except httpx.HTTPStatusError as e:
+                raise Exception(f"EXTERNAL_CONTEXT_UNAVAILABLE: ISO API returned HTTP {e.response.status_code}")
             
         for d in docs:
             d.compute_hash()

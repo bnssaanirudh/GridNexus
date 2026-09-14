@@ -73,6 +73,13 @@ async def negotiate(request: NegotiationRequest, db: AsyncSession = Depends(get_
     telemetry.negotiation_round_total.inc()
     agent_info = await _fetch_agent(request.agent_id, db)
     
+    from app.negotiate.validation import MAX_PRICE_PER_KWH
+    max_theoretical_surplus = agent_info["capacity"] * MAX_PRICE_PER_KWH
+    if request.surplus > max_theoretical_surplus:
+        import logging
+        logging.getLogger(__name__).warning(f"Spoofed surplus detected: {request.surplus} > {max_theoretical_surplus}")
+        raise HTTPException(status_code=400, detail="Requested surplus exceeds mathematical feasibility bounds.")
+        
     # State encoding for DQN
     state_dict = {
         "capacity": agent_info["capacity"],

@@ -2,8 +2,7 @@ import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { commitSettlement } from "../services/settlementService.js";
-import { StabilityGate } from "../services/stabilityGate.js";
-import { GridGate } from "../services/gridGate.js";
+import { JointGate } from "../services/jointGate.js";
 import { hasAgentPendingBeliefUpdate } from "../services/beliefUpdateService.js";
 import { isProduction } from "../config.js";
 import { verifySocketToken } from "../middleware/auth.js";
@@ -743,24 +742,15 @@ export function setupNegotiationNamespace(io: Server) {
           if (failClosed) throw error;
         });
 
-      const gateResult = await StabilityGate.check({
+      const jointResult = await JointGate.check({
         negotiationId: negState.negId,
         agentIds: negState.agentIds,
         currentOfferPrice: price,
         currentRequestedKwh: kwh,
-        currentSurplus: surplus,
-        io: namespace,
-      });
-      if (!gateResult.passed) return;
-
-      const gridResult = await GridGate.check({
-        negotiationId: negState.negId,
-        agentIds: negState.agentIds,
-        currentRequestedKwh: kwh,
         intervalMinutes: 60,
         io: namespace,
       });
-      if (!gridResult.passed) return;
+      if (!jointResult.passed) return;
 
       let participants = negState.participants;
       if (participants.length !== negState.agentIds.length) {
@@ -810,16 +800,16 @@ export function setupNegotiationNamespace(io: Server) {
         pricePerKwh: price,
         deliveryStart,
         deliveryEnd,
-        stabilityCheckId: gateResult.checkId,
-        gridCertificateId: gridResult.certId,
+        stabilityCheckId: jointResult.certId,
+        gridCertificateId: jointResult.certId,
         energyTransferData: {
           amount: kwh,
           price,
           startTime: deliveryStart,
           intervalMinutes: 60,
           averagePowerKw: kwh,
-          stabilitycheckid: gateResult.checkId,
-          gridcertificateid: gridResult.certId,
+          stabilitycheckid: jointResult.certId || "",
+          gridcertificateid: jointResult.certId || "",
         },
         rlRewardData: {
           agentId: negState.activeAgent,

@@ -82,22 +82,7 @@ def verify_stability(
     if len(coalition) == 0:
         raise ValueError("Coalition must be non-empty")
 
-    if len(graph.nodes) > 50:
-        # Fast bypass for large true-network swarms (≥1000 nodes).
-        # The full Least-Core LP is exponential in the number of deviating
-        # coalitions; for production-scale graphs we conservatively certify
-        # stability with zero margin and skip the exponential enumeration.
-        return StabilityResult(
-            is_stable=True,
-            margin=0.0,
-            epsilon_star=0.0,
-            allocation={},
-            outside_options={},
-            deviating_coalition=None,
-            rounds=1,
-            converged=True,
-            solve_time_ms=(time.perf_counter() - t_start) * 1000,
-        )
+    # By-pass removed to allow topology aware oracle to handle N > 50
         
     profiles = profiles or {}
     
@@ -134,13 +119,19 @@ def verify_stability(
     
     v_S = value_model.evaluate(frozenset(coalition), profiles)
 
-    k = max_deviation_size if max_deviation_size is not None else n - 1
-    subgraph = graph.subgraph(coalition)
-    deviations_raw = permissible_coalitions(subgraph, k=k)
-    S_frozen = frozenset(coalition)
-    deviations: list[frozenset[Any]] = [d for d in deviations_raw if d != S_frozen]
+    char_fn: dict[frozenset[Any], float] = {}
 
-    char_fn = build_characteristic_function(coalition, profiles, deviations, value_model)
+    S_frozen = frozenset(coalition)
+    
+    use_exact = n <= 12
+    if use_exact:
+        k = max_deviation_size if max_deviation_size is not None else n - 1
+        subgraph = graph.subgraph(coalition)
+        deviations_raw = permissible_coalitions(subgraph, k=k)
+        deviations = [d for d in deviations_raw if d != S_frozen]
+        char_fn = build_characteristic_function(coalition, profiles, deviations, value_model)
+    else:
+        deviations = []
 
     # ── Least-Core LP ────────────────────────────────────────────────
     # Variables: x[0..n-1] = payoffs, x[n] = epsilon
@@ -166,7 +157,12 @@ def verify_stability(
         row[i] = -1.0
         row[n] = -1.0
         active_rows.append(row)
-        active_rhs.append(-char_fn[frozenset([a])])
+        
+        S_a = frozenset([a])
+        if S_a not in char_fn:
+            char_fn[S_a] = value_model.evaluate(S_a, profiles)
+            
+        active_rhs.append(-char_fn[S_a])
 
     rounds = 0
     converged = False
@@ -226,7 +222,14 @@ def verify_stability(
         epsilon_star = float(x_arr[n])
 
         # Run separation oracle on x_star (epsilon is NOT added to x_star during check)
-        oracle_result = separation_oracle(x_star_dict, deviations, char_fn, EPSILON)
+        if use_exact:
+            oracle_result = separation_oracle(x_star_dict, deviations, char_fn, EPSILON)
+        else:
+            from app.stability.separation_oracle import topology_aware_separation_oracle
+            oracle_result = topology_aware_separation_oracle(
+                x_star_dict, graph.subgraph(coalition), profiles, value_model, char_fn, EPSILON
+            )
+        
         final_oracle = oracle_result
 
         # The oracle finds slack without epsilon: slack(T) = Σxᵢ - v(T)

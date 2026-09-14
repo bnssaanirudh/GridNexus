@@ -1,0 +1,44 @@
+[
+  {
+    "nodes": 10,
+    "solve_time_ms": 22.651799954473972,
+    "total_time_ms": 23.004000016953796,
+    "rounds": 1,
+    "converged": true
+  },
+  {
+    "nodes": 20,
+    "solve_time_ms": 1.5845999587327242,
+    "total_time_ms": 1.7104999860748649,
+    "rounds": 1,
+    "converged": true
+  },
+  {
+    "nodes": 30,
+    "solve_time_ms": 3.382900031283498,
+    "total_time_ms": 3.514000040013343,
+    "rounds": 1,
+    "converged": true
+  },
+  {
+    "nodes": 50,
+    "solve_time_ms": 1.5367000014521182,
+    "total_time_ms": 1.5789999742992222,
+    "rounds": 1,
+    "converged": true
+  },
+  {
+    "nodes": 100,
+    "solve_time_ms": 2.0389999845065176,
+    "total_time_ms": 2.0831000292673707,
+    "rounds": 1,
+    "converged": true
+  },
+  {
+    "nodes": 200,
+    "solve_time_ms": 12.440600025001913,
+    "total_time_ms": 12.565100041683763,
+    "rounds": 1,
+    "converged": true
+  }
+]

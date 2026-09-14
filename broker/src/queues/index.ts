@@ -42,6 +42,7 @@ export const stabilityQueue = new Queue<StabilityJobPayload>(`${qPrefix}stabilit
 export const persuasionQueue = new Queue<PersuasionJobPayload>(`${qPrefix}persuasion-jobs`, { connection });
 export const qreCalibrationQueue = new Queue<QreCalibrationJobPayload>(`${qPrefix}qre-calibration-jobs`, { connection });
 export const gridQueue = new Queue<GridJobPayload>(`${qPrefix}grid-jobs`, { connection });
+export const jointQueue = new Queue<any>(`${qPrefix}joint-jobs`, { connection });
 
 export async function closeQueues() {
   try {
@@ -49,6 +50,7 @@ export async function closeQueues() {
     await persuasionQueue.close();
     await qreCalibrationQueue.close();
     await gridQueue.close();
+    await jointQueue.close();
     await connection.quit();
   } catch (_) { /* ignore */ }
 }

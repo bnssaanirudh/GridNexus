@@ -27,6 +27,7 @@ export interface SettlementInput {
   deliveryEnd: Date;
   stabilityCheckId?: string;
   gridCertificateId?: string;
+  jointCertificateId?: string;
   actorId?: string;
   /** Pre-existing EnergyTransfer data to record */
   energyTransferData?: {
@@ -37,6 +38,7 @@ export interface SettlementInput {
     averagePowerKw: number;
     stabilitycheckid: string;
     gridcertificateid: string;
+    jointcertificateid?: string;
   };
   rlRewardData?: {
     agentId: string;
