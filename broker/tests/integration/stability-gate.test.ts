@@ -11,11 +11,13 @@ vi.mock("@prisma/client", () => {
   (globalThis as any).__mockDb = db;
 
   const PrismaClient = vi.fn(function (this: any) {
+    this.bus = { findMany: vi.fn().mockResolvedValue([{ id: "bus1", voltageLevelKv: 12, microgrids: [] }]) };
+    this.line = { findMany: vi.fn().mockResolvedValue([]) };
     this.agent = {
       findUnique: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([
-        { id: "agentA", microgridId: "mg-a", type: "SELLER" },
-        { id: "agentB", microgridId: "mg-b", type: "BUYER" }
+        { id: "agentA", microgridId: "mg-a", type: "SELLER", microgrid: { hiddengenerationcost: "...", hiddenbatterycapacity: "...", ders: [], tradingPreference: { maximumPreferredBuyPrice: 10.0 } } },
+        { id: "agentB", microgridId: "mg-b", type: "BUYER", microgrid: { hiddengenerationcost: "...", hiddenbatterycapacity: "...", ders: [], tradingPreference: { maximumPreferredBuyPrice: 10.0 } } }
       ]),
     };
     this.gridNode = {

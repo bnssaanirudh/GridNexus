@@ -46,11 +46,13 @@ vi.mock("@prisma/client", () => {
       findFirst: vi.fn().mockResolvedValue({ id: "sig-dummy", signalData: "{}" }),
       create: vi.fn().mockResolvedValue({ id: "sig-dummy", signalData: "{}" }),
     };
+    this.bus = { findMany: vi.fn().mockResolvedValue([{ id: "bus1", voltageLevelKv: 12, microgrids: [] }]) };
+    this.line = { findMany: vi.fn().mockResolvedValue([]) };
     this.agent = {
       findUnique: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([
-        { id: "agent-free-1", microgridId: "mg-1", type: "SELLER" },
-        { id: "agent-free-2", microgridId: "mg-2", type: "BUYER" }
+        { id: "agent-free-1", microgridId: "mg-1", type: "SELLER", microgrid: { hiddengenerationcost: "...", hiddenbatterycapacity: "...", ders: [], tradingPreference: { maximumPreferredBuyPrice: 10.0 } } },
+        { id: "agent-free-2", microgridId: "mg-2", type: "BUYER", microgrid: { hiddengenerationcost: "...", hiddenbatterycapacity: "...", ders: [], tradingPreference: { maximumPreferredBuyPrice: 10.0 } } }
       ]),
     };
     this.stabilityCheck = {
@@ -106,7 +108,7 @@ vi.mock("../src/services/gridGate.js", () => ({
 
 vi.mock("bullmq", () => ({
   Queue: vi.fn(function (this: any) {
-    this.add = vi.fn().mockResolvedValue({});
+    this.add = vi.fn().mockResolvedValue({ waitUntilFinished: vi.fn().mockResolvedValue({ certId: "mock-cert", isFeasible: true, isStable: true, margin: 5.0 }) });
     this.getRepeatableJobs = vi.fn().mockResolvedValue([]);
     this.removeRepeatableByKey = vi.fn().mockResolvedValue(undefined);
     this.close = vi.fn().mockResolvedValue(undefined);

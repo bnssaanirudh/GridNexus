@@ -32,7 +32,7 @@ vi.mock("../src/queues/index.js", () => ({
 
 vi.mock("bullmq", () => ({
   Queue: vi.fn(function (this: any) {
-    this.add = vi.fn().mockResolvedValue({});
+    this.add = vi.fn().mockResolvedValue({ waitUntilFinished: vi.fn().mockResolvedValue({ certId: "mock-cert", isFeasible: true, isStable: true, margin: 5.0 }) });
     this.getRepeatableJobs = vi.fn().mockResolvedValue([]);
     this.removeRepeatableByKey = vi.fn().mockResolvedValue(undefined);
     this.close = vi.fn().mockResolvedValue(undefined);
@@ -77,6 +77,8 @@ vi.mock("@prisma/client", () => {
         return 2;
       }),
     };
+    this.bus = { findMany: vi.fn().mockResolvedValue([{ id: "bus1", voltageLevelKv: 12, microgrids: [] }]) };
+    this.line = { findMany: vi.fn().mockResolvedValue([]) };
     this.agent = {
       count: vi.fn().mockResolvedValue(2),
       findMany: vi.fn().mockImplementation(async () => {

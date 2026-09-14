@@ -1,6 +1,6 @@
 import { Namespace } from "socket.io";
 import { QueueEvents } from "bullmq";
-import { prisma } from "./commitTrade.js";
+import { prisma } from "../db/prisma.js";
 import dotenv from "dotenv";
 import { decryptValue } from "../crypto.js";
 import { jointQueue, qPrefix } from "../queues/index.js";
