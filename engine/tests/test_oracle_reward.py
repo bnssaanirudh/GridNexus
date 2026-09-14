@@ -66,11 +66,11 @@ def _state(
 
 
 def _stable_result(margin: float = 0.5) -> StabilityResult:
-    return StabilityResult(is_stable=True, margin=margin)
+    return StabilityResult(status="EXACT_STABLE", margin=margin)
 
 
 def _unstable_result(margin: float = -0.3) -> StabilityResult:
-    return StabilityResult(is_stable=False, margin=margin)
+    return StabilityResult(status="BLOCKING_COALITION_FOUND", margin=margin)
 
 
 def _outcomes(

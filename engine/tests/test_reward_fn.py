@@ -20,7 +20,7 @@ from app.qre.calibration import get_calibrated_lambda
 def test_compute_reward_surplus_only():
     # Only surplus, margin > 0 (stable), 0 fallback
     sr = StabilityResult(
-        is_stable=True,
+        status="EXACT_STABLE",
         margin=5.0,
         binding_constraints=[],
         deviating_coalition=None,
@@ -37,7 +37,7 @@ def test_compute_reward_surplus_only():
 def test_compute_reward_unstable_penalty():
     # Margin < 0 (unstable)
     sr = StabilityResult(
-        is_stable=False,
+        status="BLOCKING_COALITION_FOUND",
         margin=-3.0,
         binding_constraints=[],
         deviating_coalition=None,
@@ -52,7 +52,7 @@ def test_compute_reward_unstable_penalty():
 def test_compute_reward_fallback_penalty():
     # Fallback rate > 0
     sr = StabilityResult(
-        is_stable=True,
+        status="EXACT_STABLE",
         margin=2.0,
         binding_constraints=[],
         deviating_coalition=None,
@@ -66,7 +66,7 @@ def test_compute_reward_fallback_penalty():
 
 def test_compute_reward_all_penalties():
     sr = StabilityResult(
-        is_stable=False,
+        status="BLOCKING_COALITION_FOUND",
         margin=-2.5,
         binding_constraints=[],
         deviating_coalition=None,

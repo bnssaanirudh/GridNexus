@@ -448,23 +448,34 @@ class TestStabilityRoute:
         resp = client.post("/stability/verify", json={"coalition": []})
         assert resp.status_code == 400
 
-    def test_unknown_nodes_returns_422(self):
+    @patch("app.routers.stability.build_topology_from_db")
+    def test_unknown_nodes_returns_422(self, mock_build):
+        from app.graph.fixtures import generate_city_grid
+        mock_build.return_value = (generate_city_grid(rows=5, cols=10), -1)
         resp = client.post(
             "/stability/verify",
             json={"coalition": ["ghost-node-1", "ghost-node-2"]},
         )
         assert resp.status_code == 422
 
-    def test_disconnected_coalition_returns_422(self):
+    @patch("app.routers.stability.build_topology_from_db")
+    def test_disconnected_coalition_returns_422(self, mock_build):
         """mg-0 and mg-49 are not adjacent in the 5x10 grid (far corners)."""
+        from app.graph.fixtures import generate_city_grid
+        mock_build.return_value = (generate_city_grid(rows=5, cols=10), -1)
         resp = client.post(
             "/stability/verify",
             json={"coalition": ["mg-0", "mg-49"]},
         )
         assert resp.status_code == 422
 
-    def test_surplus_map_accepted(self):
+    @patch("app.routers.stability.build_topology_from_db")
+    def test_surplus_map_accepted(self, mock_build):
         """Request with explicit surplus_map is accepted and processed."""
+        import networkx as nx
+        G = nx.Graph()
+        G.add_edge("mg-0", "mg-1")
+        mock_build.return_value = (G, -1)
         resp = client.post(
             "/stability/verify",
             json={
@@ -474,8 +485,13 @@ class TestStabilityRoute:
         )
         assert resp.status_code == 200
 
-    def test_response_schema_is_fully_typed(self):
+    @patch("app.routers.stability.build_topology_from_db")
+    def test_response_schema_is_fully_typed(self, mock_build):
         """Verify all required fields are present and typed correctly."""
+        import networkx as nx
+        G = nx.Graph()
+        G.add_edges_from([("mg-0", "mg-1"), ("mg-1", "mg-2")])
+        mock_build.return_value = (G, -1)
         resp = client.post(
             "/stability/verify",
             json={"coalition": ["mg-0", "mg-1", "mg-2"]},
@@ -483,6 +499,7 @@ class TestStabilityRoute:
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data["isStable"], bool)
+        assert isinstance(data["status"], str)
         assert isinstance(data["margin"], float)
         assert isinstance(data["rounds"], int)
         assert isinstance(data["converged"], bool)

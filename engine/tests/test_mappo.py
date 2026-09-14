@@ -134,6 +134,7 @@ class TestRewardShaping:
         surplus: float,
         cost: float,
         oracle: float,
+        prev_stance: int = 1,
     ) -> GridNexusEnv:
         env = GridNexusEnv(n_agents=5, max_steps=20, seed=0)
         env.reset(seed=0)
@@ -144,12 +145,13 @@ class TestRewardShaping:
         env._trade_attempts[ag] = 0
         env._trade_rejections[ag] = 0
         env._cumulative_surplus[ag] = 0.0
+        env._prev_stances[ag] = prev_stance
         return env
 
     def test_scenario_a_accept_in_coalition(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
 
-        env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5)
+        env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.ACCEPT.value)
         reward = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.ACCEPT.value,
@@ -162,7 +164,7 @@ class TestRewardShaping:
     def test_scenario_b_walkaway_blocks_coalition(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
 
-        env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5)
+        env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.WALK_AWAY.value)
         reward = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.WALK_AWAY.value,
@@ -175,7 +177,7 @@ class TestRewardShaping:
     def test_scenario_c_counter_offer_no_coalition(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
 
-        env = self._env_with_state(surplus=0.6, cost=0.3, oracle=0.5)
+        env = self._env_with_state(surplus=0.6, cost=0.3, oracle=0.5, prev_stance=NegotiationAction.COUNTER_OFFER.value)
         reward = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.COUNTER_OFFER.value,
@@ -187,7 +189,7 @@ class TestRewardShaping:
 
     def test_accept_no_coalition_gives_trade_surplus_only(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
-        env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5)
+        env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.ACCEPT.value)
         reward = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.ACCEPT.value,
@@ -199,7 +201,7 @@ class TestRewardShaping:
 
     def test_walk_away_without_coalition_no_penalty(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
-        env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5)
+        env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.WALK_AWAY.value)
         reward = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.WALK_AWAY.value,

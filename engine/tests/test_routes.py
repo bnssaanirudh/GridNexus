@@ -26,13 +26,23 @@ def test_ready_check_db_down(mock_redis, mock_db):
     assert response.json() == {"status": "error", "db": "down", "redis": "up"}
 
 # Agents
-def test_create_agent_valid():
+@patch("app.routers.agents.AsyncSessionLocal")
+def test_create_agent_valid(mock_sl):
+    mock_session = MagicMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    mock_sl.return_value = mock_session
     response = client.post("/agents", json={"name": "Test Agent", "microgridId": "mg-1", "policy_metadata": {"key": "val"}})
     assert response.status_code == 200
     assert response.json()["name"] == "Test Agent"
 
-def test_create_agent_invalid():
+@patch("app.routers.agents.AsyncSessionLocal")
+def test_create_agent_invalid(mock_sl):
     # Missing required 'name'
+    mock_session = MagicMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    mock_sl.return_value = mock_session
     response = client.post("/agents", json={"policy_metadata": {"key": "val"}})
     assert response.status_code == 422
 
