@@ -152,7 +152,7 @@ class TestRewardShaping:
         from app.agents.dqn_wrapper import NegotiationAction
 
         env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.ACCEPT.value)
-        reward = env._shaped_reward(
+        reward, p_cost, s_cost = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.ACCEPT.value,
             coalition_formed=True,
@@ -165,7 +165,7 @@ class TestRewardShaping:
         from app.agents.dqn_wrapper import NegotiationAction
 
         env = self._env_with_state(surplus=0.8, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.WALK_AWAY.value)
-        reward = env._shaped_reward(
+        reward, p_cost, s_cost = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.WALK_AWAY.value,
             coalition_formed=True,
@@ -178,7 +178,7 @@ class TestRewardShaping:
         from app.agents.dqn_wrapper import NegotiationAction
 
         env = self._env_with_state(surplus=0.6, cost=0.3, oracle=0.5, prev_stance=NegotiationAction.COUNTER_OFFER.value)
-        reward = env._shaped_reward(
+        reward, p_cost, s_cost = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.COUNTER_OFFER.value,
             coalition_formed=False,
@@ -190,7 +190,7 @@ class TestRewardShaping:
     def test_accept_no_coalition_gives_trade_surplus_only(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
         env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.ACCEPT.value)
-        reward = env._shaped_reward(
+        reward, p_cost, s_cost = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.ACCEPT.value,
             coalition_formed=False,
@@ -202,7 +202,7 @@ class TestRewardShaping:
     def test_walk_away_without_coalition_no_penalty(self) -> None:
         from app.agents.dqn_wrapper import NegotiationAction
         env = self._env_with_state(surplus=0.5, cost=0.2, oracle=0.5, prev_stance=NegotiationAction.WALK_AWAY.value)
-        reward = env._shaped_reward(
+        reward, p_cost, s_cost = env._shaped_reward(
             agent="agent_0",
             action=NegotiationAction.WALK_AWAY.value,
             coalition_formed=False,

@@ -39,9 +39,9 @@ async def override_get_db():
 def test_propose_trade_feasible(mock_verify, mock_build):
     from app.grid.network_model import ElectricalNetwork, Node, Line
     net = ElectricalNetwork(base_mva=1.0)
-    net.add_node(Node("bus1", is_slack=True, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0))
-    net.add_node(Node("bus2", is_slack=False, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0))
-    net.add_line(Line("line1", "bus1", "bus2", 0.01, 0.01, 1000.0))
+    net.nodes["bus1"] = Node("bus1", voltage_level_kv=11.0, is_slack=True, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0)
+    net.nodes["bus2"] = Node("bus2", voltage_level_kv=11.0, is_slack=False, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0)
+    net.lines["line1"] = Line("line1", "bus1", "bus2", 0.01, 0.01, 1000.0)
     
     mock_build.return_value = (net, 1)
     # mock_verify returns (is_ok, final_kw, solver_used, pf_results)
@@ -70,9 +70,9 @@ def test_propose_trade_feasible(mock_verify, mock_build):
 def test_propose_trade_infeasible_correction(mock_verify, mock_build):
     from app.grid.network_model import ElectricalNetwork, Node, Line
     net = ElectricalNetwork(base_mva=1.0)
-    net.add_node(Node("bus1", is_slack=True, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0))
-    net.add_node(Node("bus2", is_slack=False, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0))
-    net.add_line(Line("line1", "bus1", "bus2", 0.01, 0.01, 100.0))
+    net.nodes["bus1"] = Node("bus1", voltage_level_kv=11.0, is_slack=True, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0)
+    net.nodes["bus2"] = Node("bus2", voltage_level_kv=11.0, is_slack=False, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0)
+    net.lines["line1"] = Line("line1", "bus1", "bus2", 0.01, 0.01, 100.0)
     
     mock_build.return_value = (net, 1)
     
