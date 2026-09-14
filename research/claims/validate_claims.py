@@ -15,8 +15,10 @@ def validate_claims():
         claims = list(reader)
         
     errors = 0
+    supported_quantitative_claims = 0
     for claim in claims:
         if claim["verification_status"] == "SUPPORTED" and claim["claim_type"] == "quantitative":
+            supported_quantitative_claims += 1
             raw_files = claim["raw_result_files"].split(";")
             for rf in raw_files:
                 rf = rf.strip()
@@ -29,8 +31,11 @@ def validate_claims():
     if errors > 0:
         print(f"\nValidation FAILED with {errors} missing evidence files.")
         sys.exit(1)
+    elif supported_quantitative_claims == 0:
+        print("\nValidation PASSED. No SUPPORTED quantitative claims are currently declared.")
+        sys.exit(0)
     else:
-        print(f"\nValidation PASSED. All SUPPORTED quantitative claims have evidence.")
+        print(f"\nValidation PASSED. All {supported_quantitative_claims} SUPPORTED quantitative claims have evidence.")
         sys.exit(0)
 
 if __name__ == "__main__":

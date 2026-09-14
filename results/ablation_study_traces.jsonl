@@ -1,0 +1,6 @@
+{"seed": 42, "algorithm": "IPPO", "welfare": 0.266, "stability_score": 0.5, "physical_violations": 0.1}
+{"seed": 42, "algorithm": "MAPPO", "welfare": 0.2829, "stability_score": 0.5, "physical_violations": 0.1}
+{"seed": 42, "algorithm": "SafeMAPPO", "welfare": 0.4309, "stability_score": 0.5, "physical_violations": 0.1}
+{"seed": 42, "algorithm": "CS-SafeMAPPO", "welfare": 0.4072, "stability_score": 1.0, "physical_violations": 0.2}
+{"seed": 42, "algorithm": "Ablation: No Coalition Constraint", "welfare": 0.3026, "stability_score": 1.0, "physical_violations": 0.14}
+{"seed": 42, "algorithm": "Ablation: No Physical Constraint", "welfare": 0.344, "stability_score": 1.0, "physical_violations": 0.16}

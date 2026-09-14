@@ -37,12 +37,13 @@ async def propose_trade(request: ProposeTradeRequest, db: AsyncSession = Depends
     network, topology_version = await build_topology_from_db(db)
     
     if request.seller_id not in network.nodes or request.buyer_id not in network.nodes:
-        # Fallback to defaults if missing for tests
-        seller_node = list(network.nodes.keys())[0]
-        buyer_node = list(network.nodes.keys())[1]
-    else:
-        seller_node = request.seller_id
-        buyer_node = request.buyer_id
+        raise HTTPException(
+            status_code=400,
+            detail="Unknown seller or buyer grid node. Settlement requires explicit physical bus mapping."
+        )
+
+    seller_node = request.seller_id
+    buyer_node = request.buyer_id
         
     # 2. Hierarchical Validation & Correction
     is_ok, final_kw, solver_used, pf_results = verify_and_correct_dispatch(

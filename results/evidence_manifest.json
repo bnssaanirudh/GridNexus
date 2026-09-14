@@ -1,0 +1,40 @@
+{
+    "artifacts": [
+        {
+            "name": "ablation_study",
+            "raw_result_file": "results/ablation_study.csv",
+            "script": "engine/scripts/experiments/run_ablation_study.py",
+            "config": "CS-SafeMAPPOConfig",
+            "seed": "42-44",
+            "commit_hash": "HEAD",
+            "synthetic": false
+        },
+        {
+            "name": "sybil_sweep",
+            "raw_result_file": "results/sybil_sweep.csv",
+            "script": "engine/scripts/experiments/run_sybil_sweep.py",
+            "config": "SybilAttack",
+            "seed": "42-43",
+            "commit_hash": "HEAD",
+            "synthetic": false
+        },
+        {
+            "name": "collusion_sweep",
+            "raw_result_file": "results/collusion_sweep.csv",
+            "script": "engine/scripts/experiments/run_collusion_sweep.py",
+            "config": "CollusionAttack",
+            "seed": "42",
+            "commit_hash": "HEAD",
+            "synthetic": false
+        },
+        {
+            "name": "scalability_sweep",
+            "raw_result_file": "results/scalability_sweep.csv",
+            "script": "engine/scripts/experiments/run_scalability_sweep.py",
+            "config": "VerifyAndCorrect",
+            "seed": "N/A",
+            "commit_hash": "HEAD",
+            "synthetic": false
+        }
+    ]
+}

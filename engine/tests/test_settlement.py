@@ -98,6 +98,34 @@ def test_propose_trade_infeasible_correction(mock_verify, mock_build):
         app.dependency_overrides = {}
 
 @patch("app.routers.settlement.build_topology_from_db")
+@patch("app.routers.settlement.verify_and_correct_dispatch")
+def test_propose_trade_rejects_unknown_grid_nodes(mock_verify, mock_build):
+    from app.grid.network_model import ElectricalNetwork, Node, Line
+    net = ElectricalNetwork(base_mva=1.0)
+    net.nodes["bus1"] = Node("bus1", voltage_level_kv=11.0, is_slack=True, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0)
+    net.nodes["bus2"] = Node("bus2", voltage_level_kv=11.0, is_slack=False, v_min_pu=0.9, v_max_pu=1.1, p_gen_kw=0.0, p_load_kw=0.0, q_gen_kvar=0.0, q_load_kvar=0.0)
+    net.lines["line1"] = Line("line1", "bus1", "bus2", 0.01, 0.01, 100.0)
+
+    mock_build.return_value = (net, 1)
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        response = client.post(
+            "/settlement/propose",
+            json={
+                "negotiation_id": "neg_bad_mapping",
+                "seller_id": "agent-not-a-bus",
+                "buyer_id": "bus2",
+                "proposed_kw": 10.0
+            }
+        )
+        assert response.status_code == 400
+        assert "Unknown seller or buyer grid node" in response.json()["detail"]
+        mock_verify.assert_not_called()
+    finally:
+        app.dependency_overrides = {}
+
+@patch("app.routers.settlement.build_topology_from_db")
 @patch("app.routers.settlement.validate_certificate_state")
 def test_telemetry_update_stale_certificate(mock_validate, mock_build):
     mock_build.return_value = (None, 1)

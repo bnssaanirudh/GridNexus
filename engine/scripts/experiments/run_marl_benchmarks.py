@@ -4,9 +4,39 @@ from pathlib import Path
 
 from app.rl.ippo_trainer import IPPOTrainer, IPPOConfig
 from app.rl.mappo_trainer import MAPPOTrainer, MAPPOConfig
+from app.rl.cs_safe_mappo import CSSafeMAPPOTrainer, CSSafeMAPPOConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def build_benchmark_trainers(seed: int, output_dir: Path, n_episodes: int = 50, max_steps: int = 20):
+    return {
+        "IPPO": IPPOTrainer(
+            IPPOConfig(
+                n_episodes=n_episodes,
+                max_steps=max_steps,
+                seed=seed,
+                artifact_dir=str(output_dir / "ippo" / f"seed_{seed}"),
+            )
+        ),
+        "MAPPO": MAPPOTrainer(
+            MAPPOConfig(
+                n_episodes=n_episodes,
+                max_steps=max_steps,
+                seed=seed,
+                artifact_dir=str(output_dir / "mappo" / f"seed_{seed}"),
+            )
+        ),
+        "CS-SafeMAPPO": CSSafeMAPPOTrainer(
+            CSSafeMAPPOConfig(
+                n_episodes=n_episodes,
+                max_steps=max_steps,
+                seed=seed,
+                artifact_dir=str(output_dir / "cs_safemappo" / f"seed_{seed}"),
+            )
+        ),
+    }
+
 
 def run_benchmarks(num_seeds=10):
     output_dir = Path("artifacts/benchmarks")
@@ -19,23 +49,9 @@ def run_benchmarks(num_seeds=10):
     for seed in seeds:
         logger.info(f"--- SEED {seed} ---")
         
-        # IPPO
-        ippo_cfg = IPPOConfig(n_episodes=50, seed=seed, artifact_dir=str(output_dir / "ippo" / f"seed_{seed}"))
-        ippo_trainer = IPPOTrainer(ippo_cfg)
-        ippo_trainer.train()
-        ippo_trainer.save(Path(ippo_cfg.artifact_dir))
-        
-        # MAPPO
-        mappo_cfg = MAPPOConfig(n_episodes=50, seed=seed, artifact_dir=str(output_dir / "mappo" / f"seed_{seed}"))
-        mappo_trainer = MAPPOTrainer(mappo_cfg)
-        mappo_trainer.train()
-        mappo_trainer.save(Path(mappo_cfg.artifact_dir))
-
-        # CS-SafeMAPPO
-        cs_mappo_cfg = MAPPOConfig(n_episodes=50, seed=seed, artifact_dir=str(output_dir / "cs_safemappo" / f"seed_{seed}"), safe_mode=True)
-        cs_mappo_trainer = MAPPOTrainer(cs_mappo_cfg)
-        cs_mappo_trainer.train()
-        cs_mappo_trainer.save(Path(cs_mappo_cfg.artifact_dir))
+        for trainer in build_benchmark_trainers(seed, output_dir).values():
+            trainer.train()
+            trainer.save(Path(trainer.cfg.artifact_dir))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

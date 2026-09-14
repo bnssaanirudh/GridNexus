@@ -117,6 +117,8 @@ class RolloutBuffer:
     log_probs: list[dict[str, float]] = field(default_factory=list)
     rewards: list[dict[str, float]] = field(default_factory=list)
     costs: list[dict[str, float]] = field(default_factory=list)
+    physical_costs: list[dict[str, float]] = field(default_factory=list)
+    stability_costs: list[dict[str, float]] = field(default_factory=list)
     dones: list[bool] = field(default_factory=list)
     global_obs: list[np.ndarray] = field(default_factory=list)
 
@@ -126,6 +128,8 @@ class RolloutBuffer:
         self.log_probs.clear()
         self.rewards.clear()
         self.costs.clear()
+        self.physical_costs.clear()
+        self.stability_costs.clear()
         self.dones.clear()
         self.global_obs.clear()
 
@@ -253,8 +257,12 @@ class MAPPOTrainer:
             
             # Extract costs if safe_mode is active
             costs = {}
+            physical_costs = {}
+            stability_costs = {}
             for ag, inf in infos.items():
-                costs[ag] = inf.get("physical_cost", 0.0) + inf.get("stability_cost", 0.0)
+                physical_costs[ag] = inf.get("physical_cost", 0.0)
+                stability_costs[ag] = inf.get("stability_cost", 0.0)
+                costs[ag] = physical_costs[ag] + stability_costs[ag]
                 if self.cfg.safe_mode:
                     # In safe mode, we decouple the penalty from the reward
                     rewards[ag] += costs[ag] # undo the penalty applied in env
@@ -266,6 +274,8 @@ class MAPPOTrainer:
             self.buffer.log_probs.append(log_probs)
             self.buffer.rewards.append(rewards)
             self.buffer.costs.append(costs)
+            self.buffer.physical_costs.append(physical_costs)
+            self.buffer.stability_costs.append(stability_costs)
             self.buffer.dones.append(done)
             self.buffer.global_obs.append(global_obs)
 
