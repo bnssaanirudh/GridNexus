@@ -1,0 +1,7 @@
+seed,n_agents,sybil_split,total_trades_proposed,total_trades_settled,total_volume_settled
+42,50,2,5,0,0
+42,50,5,8,0,0
+42,50,10,11,0,0
+43,100,2,10,0,0
+43,100,5,13,0,0
+43,100,10,17,0,0

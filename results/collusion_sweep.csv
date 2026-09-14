@@ -1,0 +1,3 @@
+seed,n_agents,collusion_fraction,total_trades_settled
+42,50,0.1,0
+42,50,0.3,0

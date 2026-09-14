@@ -1,0 +1,4 @@
+seed,n_agents,misreporting_magnitude,total_trades_settled
+42,50,0.1,0
+42,50,0.2,0
+42,50,0.5,0

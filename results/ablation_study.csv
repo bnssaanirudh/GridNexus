@@ -1,0 +1,31 @@
+seed,algorithm,welfare,stability_score,physical_violations
+42,Random,227.89,0.01,27
+42,Rule-based,548.98,0.33,0
+42,IPPO,803.01,0.86,1
+42,MAPPO,777.15,0.51,1
+42,SafeMAPPO,665.59,0.7,0
+42,CS-SafeMAPPO,956.12,0.97,0
+42,Ablation: No Coalition Constraint,810.4,0.67,7
+42,Ablation: No Physical Constraint,776.78,0.82,0
+42,Ablation: No Corrective Projection,827.64,0.56,6
+42,Ablation: No Advanced Allocation,702.08,0.56,5
+43,Random,107.71,0.14,19
+43,Rule-based,691.88,0.37,5
+43,IPPO,837.89,0.68,7
+43,MAPPO,782.7,0.71,9
+43,SafeMAPPO,711.71,0.84,8
+43,CS-SafeMAPPO,988.65,1.0,0
+43,Ablation: No Coalition Constraint,718.18,0.52,1
+43,Ablation: No Physical Constraint,846.07,0.65,1
+43,Ablation: No Corrective Projection,648.18,0.83,2
+43,Ablation: No Advanced Allocation,831.69,0.74,8
+44,Random,181.71,0.11,17
+44,Rule-based,535.33,0.35,0
+44,IPPO,667.41,0.73,1
+44,MAPPO,647.01,0.71,4
+44,SafeMAPPO,808.05,0.65,6
+44,CS-SafeMAPPO,976.61,0.97,0
+44,Ablation: No Coalition Constraint,707.49,0.64,4
+44,Ablation: No Physical Constraint,785.17,0.54,1
+44,Ablation: No Corrective Projection,776.59,0.61,5
+44,Ablation: No Advanced Allocation,632.32,0.75,4

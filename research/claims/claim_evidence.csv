@@ -1,0 +1,5 @@
+claim_id,claim_text,claim_type,algorithm,dataset,experiment_script,raw_result_files,verification_status
+1,CS-SafeMAPPO achieves higher welfare than SafeMAPPO,quantitative,CS-SafeMAPPO,IEEE-33,run_ablation_study.py,results/ablation_study.csv,SUPPORTED
+2,Sybil attacks are mitigated by advanced allocation,quantitative,CS-SafeMAPPO,IEEE-33,run_sybil_sweep.py,results/sybil_sweep.csv,SUPPORTED
+3,Collusion gains are negative under CS-SafeMAPPO,quantitative,CS-SafeMAPPO,IEEE-33,run_collusion_sweep.py,results/collusion_sweep.csv,SUPPORTED
+4,Hierarchical verification reduces AC solver calls by 80%,quantitative,CS-SafeMAPPO,IEEE-33,run_scalability_sweep.py,results/scalability_sweep.csv,SUPPORTED
